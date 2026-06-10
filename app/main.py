@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+import calendar as calendar_lib
+from collections import defaultdict
+from datetime import date, datetime, timedelta, timezone
 
 from fastapi import FastAPI, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -45,6 +47,12 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
 
 SUPPORTED_CURRENCIES = {"RUB", "USD", "EUR", "USDT"}
+RU_MONTHS = [
+    "",
+    "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
+    "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь",
+]
+RU_WEEKDAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
 DONATION_URL = "https://t.me/AlekseyRdonate_bot"
 templates.env.globals["donation_url"] = DONATION_URL
 
@@ -157,6 +165,9 @@ def parse_payment_date(value: str) -> str:
     raise HTTPException(status_code=400, detail="Дата должна быть в формате дд.мм.гггг")
 
 
+SUPPORTED_INTEGRATIONS = {"manual", "billmanager"}
+
+
 def account_payload(
     name: str,
     provider: str,
@@ -165,7 +176,13 @@ def account_payload(
     panel_url: str,
     payment_url: str,
     notes: str,
+    integration_type: str = "manual",
+    integration_url: str = "",
+    auto_sync_enabled: bool = False,
 ) -> dict[str, object]:
+    normalized_integration = integration_type.strip().lower() or "manual"
+    if normalized_integration not in SUPPORTED_INTEGRATIONS:
+        normalized_integration = "manual"
     return {
         "name": name.strip(),
         "provider": provider.strip(),
@@ -174,6 +191,9 @@ def account_payload(
         "panel_url": panel_url.strip(),
         "payment_url": payment_url.strip(),
         "notes": notes.strip(),
+        "integration_type": normalized_integration,
+        "integration_url": integration_url.strip(),
+        "auto_sync_enabled": bool(auto_sync_enabled) and normalized_integration != "manual",
     }
 
 
@@ -383,8 +403,24 @@ def add_account(
     panel_url: str = Form(""),
     payment_url: str = Form(""),
     notes: str = Form(""),
+    integration_type: str = Form("manual"),
+    integration_url: str = Form(""),
+    auto_sync_enabled: bool = Form(False),
 ) -> RedirectResponse:
-    create_account(account_payload(name, provider, login, auth_secret, panel_url, payment_url, notes))
+    create_account(
+        account_payload(
+            name,
+            provider,
+            login,
+            auth_secret,
+            panel_url,
+            payment_url,
+            notes,
+            integration_type,
+            integration_url,
+            auto_sync_enabled,
+        )
+    )
     return RedirectResponse("/accounts", status_code=303)
 
 
@@ -414,10 +450,24 @@ def save_account(
     panel_url: str = Form(""),
     payment_url: str = Form(""),
     notes: str = Form(""),
+    integration_type: str = Form("manual"),
+    integration_url: str = Form(""),
+    auto_sync_enabled: bool = Form(False),
 ) -> RedirectResponse:
     update_account(
         account_id,
-        account_payload(name, provider, login, auth_secret, panel_url, payment_url, notes),
+        account_payload(
+            name,
+            provider,
+            login,
+            auth_secret,
+            panel_url,
+            payment_url,
+            notes,
+            integration_type,
+            integration_url,
+            auto_sync_enabled,
+        ),
     )
     return RedirectResponse("/accounts", status_code=303)
 
@@ -433,6 +483,120 @@ def history_page(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(
         "history.html",
         {"request": request, "items": list_payment_history()},
+    )
+
+
+@app.get("/calendar", response_class=HTMLResponse)
+def calendar_page(request: Request, year: int = 0, month: int = 0) -> HTMLResponse:
+    today = date.today()
+    current_year = year or today.year
+    current_month = month or today.month
+    if current_month < 1 or current_month > 12:
+        current_month = today.month
+    servers = list_servers()
+    by_date: dict[date, list] = defaultdict(list)
+    for server in servers:
+        by_date[server.next_payment_date].append(server)
+    grid = calendar_lib.Calendar(firstweekday=0)
+    weeks: list[list[dict[str, object]]] = []
+    for week in grid.monthdatescalendar(current_year, current_month):
+        cells = []
+        for day in week:
+            cells.append(
+                {
+                    "date": day,
+                    "in_month": day.month == current_month,
+                    "is_today": day == today,
+                    "events": by_date.get(day, []),
+                }
+            )
+        weeks.append(cells)
+    first_of_month = date(current_year, current_month, 1)
+    prev_month = (first_of_month - timedelta(days=1)).replace(day=1)
+    next_month = (first_of_month + timedelta(days=31)).replace(day=1)
+    month_servers = sorted(
+        (
+            server
+            for server in servers
+            if server.next_payment_date.year == current_year
+            and server.next_payment_date.month == current_month
+        ),
+        key=lambda server: server.next_payment_date,
+    )
+    return templates.TemplateResponse(
+        "calendar.html",
+        {
+            "request": request,
+            "weeks": weeks,
+            "weekdays": RU_WEEKDAYS,
+            "month_title": f"{RU_MONTHS[current_month]} {current_year}",
+            "today": today,
+            "prev": {"year": prev_month.year, "month": prev_month.month},
+            "next": {"year": next_month.year, "month": next_month.month},
+            "is_current_month": current_year == today.year and current_month == today.month,
+            "month_servers": month_servers,
+            "donation_url": DONATION_URL,
+        },
+    )
+
+
+def _ics_escape(value: str) -> str:
+    return (
+        value.replace("\\", "\\\\")
+        .replace(";", "\\;")
+        .replace(",", "\\,")
+        .replace("\n", "\\n")
+    )
+
+
+@app.get("/calendar.ics")
+def calendar_ics() -> Response:
+    servers = list_servers()
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//Server Billing Manager//Payments//RU",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH",
+        "X-WR-CALNAME:Оплаты серверов",
+    ]
+    for server in servers:
+        start = server.next_payment_date.strftime("%Y%m%d")
+        end = (server.next_payment_date + timedelta(days=1)).strftime("%Y%m%d")
+        amount = ("%g" % server.amount) if server.amount else ""
+        summary = f"Оплата: {server.name}"
+        if server.provider:
+            summary += f" ({server.provider})"
+        description_parts = [f"Провайдер: {server.provider}"]
+        if amount:
+            description_parts.append(f"Сумма: {amount} {server.currency}")
+        if server.service_id:
+            description_parts.append(f"ID услуги: {server.service_id}")
+        description = "\n".join(description_parts)
+        lines.extend(
+            [
+                "BEGIN:VEVENT",
+                f"UID:server-{server.id}-{start}@server-billing",
+                f"DTSTAMP:{stamp}",
+                f"DTSTART;VALUE=DATE:{start}",
+                f"DTEND;VALUE=DATE:{end}",
+                f"SUMMARY:{_ics_escape(summary)}",
+                f"DESCRIPTION:{_ics_escape(description)}",
+                "BEGIN:VALARM",
+                "TRIGGER:-P1D",
+                "ACTION:DISPLAY",
+                f"DESCRIPTION:{_ics_escape(summary)}",
+                "END:VALARM",
+                "END:VEVENT",
+            ]
+        )
+    lines.append("END:VCALENDAR")
+    body = "\r\n".join(lines) + "\r\n"
+    return Response(
+        content=body,
+        media_type="text/calendar; charset=utf-8",
+        headers={"Content-Disposition": "attachment; filename=server-billing.ics"},
     )
 
 

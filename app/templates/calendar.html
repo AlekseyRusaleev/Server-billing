@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="eyebrow">Сроки оплаты</p>
+    <h1>Календарь оплат</h1>
+  </div>
+  <a class="primary" href="/calendar.ics" download>Экспорт в календарь (iCal)</a>
+</section>
+
+<section class="panel">
+  <div class="panel-head calendar-nav">
+    <a class="icon-link ghost" href="/calendar?year={{ prev.year }}&month={{ prev.month }}">← Назад</a>
+    <h2>{{ month_title }}</h2>
+    <a class="icon-link ghost" href="/calendar?year={{ next.year }}&month={{ next.month }}">Вперёд →</a>
+  </div>
+  {% if not is_current_month %}
+  <p class="muted"><a class="secondary-link" href="/calendar">Вернуться к текущему месяцу</a></p>
+  {% endif %}
+
+  <div class="calendar-grid">
+    {% for weekday in weekdays %}
+    <div class="calendar-weekday">{{ weekday }}</div>
+    {% endfor %}
+    {% for week in weeks %}
+      {% for cell in week %}
+      <div class="calendar-cell {{ 'out-month' if not cell.in_month else '' }} {{ 'today' if cell.is_today else '' }}">
+        <span class="calendar-day">{{ cell.date.day }}</span>
+        {% for server in cell.events %}
+        <a class="calendar-event {{ server.payment_state }}" href="/servers/{{ server.id }}/pay" title="{{ server.name }} · {{ '%g'|format(server.amount) }} {{ server.currency }}">
+          {{ server.name }}
+        </a>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <h2>Оплаты в этом месяце</h2>
+    <span>{{ month_servers|length }} серверов</span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Дата</th>
+          <th>Сервер</th>
+          <th>Провайдер</th>
+          <th>Сумма</th>
+          <th>Статус</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for server in month_servers %}
+        <tr>
+          <td>{{ server.next_payment_date.strftime("%d.%m.%Y") }}</td>
+          <td><strong>{{ server.name }}</strong></td>
+          <td>{{ server.provider }}</td>
+          <td>{{ "%g"|format(server.amount) }} {{ server.currency }}</td>
+          <td><span class="badge {{ server.payment_state }}">{{ server.payment_label }}</span></td>
+          <td class="actions">
+            <a class="icon-link" href="/servers/{{ server.id }}/pay">Оплата</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="empty">В этом месяце оплат нет.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

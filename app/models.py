@@ -7,6 +7,12 @@ from sqlite3 import Row
 from app.crypto import decrypt_secret
 
 
+INTEGRATION_LABELS = {
+    "manual": "Ручной",
+    "billmanager": "BILLmanager",
+}
+
+
 @dataclass(frozen=True)
 class HostingAccount:
     id: int
@@ -19,6 +25,20 @@ class HostingAccount:
     notes: str
     created_at: str
     updated_at: str
+    integration_type: str = "manual"
+    integration_url: str = ""
+    auto_sync_enabled: bool = False
+    last_sync_at: str = ""
+    last_sync_status: str = ""
+    last_sync_message: str = ""
+
+    @property
+    def integration_label(self) -> str:
+        return INTEGRATION_LABELS.get(self.integration_type, self.integration_type or "Ручной")
+
+    @property
+    def is_synced(self) -> bool:
+        return self.integration_type != "manual"
 
 
 @dataclass(frozen=True)
@@ -117,6 +137,12 @@ def account_from_row(row: Row) -> HostingAccount:
         notes=row["notes"] or "",
         created_at=row["created_at"],
         updated_at=row["updated_at"],
+        integration_type=str(row_value(row, "integration_type", "manual") or "manual"),
+        integration_url=str(row_value(row, "integration_url", "") or ""),
+        auto_sync_enabled=bool(row_value(row, "auto_sync_enabled", 0)),
+        last_sync_at=str(row_value(row, "last_sync_at", "") or ""),
+        last_sync_status=str(row_value(row, "last_sync_status", "") or ""),
+        last_sync_message=str(row_value(row, "last_sync_message", "") or ""),
     )
 
 

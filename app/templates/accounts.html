@@ -20,10 +20,15 @@
       <div>
         <span class="account-provider">{{ account.provider }}</span>
         <h2>{{ account.name }}</h2>
+        <span class="integration-tag {{ 'synced' if account.is_synced else 'manual' }}">{{ account.integration_label }}</span>
       </div>
       <dl>
         <div><dt>Логин</dt><dd>{{ account.login or "не указан" }}</dd></div>
         <div><dt>Секрет</dt><dd>{{ "задан" if account.auth_secret else "не задан" }}</dd></div>
+        {% if account.is_synced %}
+        <div><dt>Автосинк</dt><dd>{{ "включена" if account.auto_sync_enabled else "выключена" }}</dd></div>
+        <div><dt>Синхронизация</dt><dd>{{ account.last_sync_at or "ещё не запускалась" }}</dd></div>
+        {% endif %}
       </dl>
       <div class="account-actions">
         {% if account.panel_url %}

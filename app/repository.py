@@ -51,8 +51,9 @@ def create_account(data: dict[str, object]) -> int:
         cursor = connection.execute(
             """
             INSERT INTO hosting_accounts (
-                name, provider, login, auth_secret, panel_url, payment_url, notes
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                name, provider, login, auth_secret, panel_url, payment_url, notes,
+                integration_type, integration_url, auto_sync_enabled
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 data["name"],
@@ -62,6 +63,9 @@ def create_account(data: dict[str, object]) -> int:
                 data.get("panel_url", ""),
                 data.get("payment_url", ""),
                 data.get("notes", ""),
+                data.get("integration_type", "manual") or "manual",
+                data.get("integration_url", ""),
+                1 if data.get("auto_sync_enabled") else 0,
             ),
         )
         return int(cursor.lastrowid)
@@ -73,7 +77,8 @@ def update_account(account_id: int, data: dict[str, object]) -> None:
             """
             UPDATE hosting_accounts
             SET name = ?, provider = ?, login = ?, auth_secret = ?,
-                panel_url = ?, payment_url = ?, notes = ?
+                panel_url = ?, payment_url = ?, notes = ?,
+                integration_type = ?, integration_url = ?, auto_sync_enabled = ?
             WHERE id = ?
             """,
             (
@@ -84,6 +89,9 @@ def update_account(account_id: int, data: dict[str, object]) -> None:
                 data.get("panel_url", ""),
                 data.get("payment_url", ""),
                 data.get("notes", ""),
+                data.get("integration_type", "manual") or "manual",
+                data.get("integration_url", ""),
+                1 if data.get("auto_sync_enabled") else 0,
                 account_id,
             ),
         )
@@ -469,31 +477,31 @@ def seed_demo_data() -> None:
 
     demo_accounts = [
         {
-            "name": "OnlineVDS основной",
-            "provider": "onlinevds.ru",
+            "name": "Демо · основной хостинг",
+            "provider": "example-host.test",
             "login": "admin@example.com",
             "auth_secret": "demo-password",
-            "panel_url": "https://onlinevds.ru/",
-            "payment_url": "https://onlinevds.ru/",
-            "notes": "Демо-доступ. В продакшене секреты нужно шифровать.",
+            "panel_url": "https://example.com/",
+            "payment_url": "https://example.com/",
+            "notes": "Пример для ознакомления — удалите после настройки своих аккаунтов.",
         },
         {
-            "name": "Qwins",
-            "provider": "qwins.co",
+            "name": "Демо · зарубежный VPS",
+            "provider": "demo-vps.test",
             "login": "billing@example.com",
             "auth_secret": "demo-password",
-            "panel_url": "https://qwins.co/",
-            "payment_url": "https://qwins.co/",
-            "notes": "",
+            "panel_url": "https://example.com/",
+            "payment_url": "https://example.com/",
+            "notes": "Пример для ознакомления — удалите после настройки своих аккаунтов.",
         },
         {
-            "name": "Hostoff",
-            "provider": "hostoff.net",
+            "name": "Демо · веб-хостинг",
+            "provider": "demo-web.test",
             "login": "host@example.com",
             "auth_secret": "demo-password",
-            "panel_url": "https://hostoff.net/",
-            "payment_url": "https://hostoff.net/",
-            "notes": "",
+            "panel_url": "https://example.com/",
+            "payment_url": "https://example.com/",
+            "notes": "Пример для ознакомления — удалите после настройки своих аккаунтов.",
         },
     ]
 
@@ -520,9 +528,9 @@ def seed_demo_data() -> None:
     today = date.today()
     samples = [
         {
-            "name": "RDP Moscow 01",
-            "hosting_account_id": accounts_by_provider.get("onlinevds.ru"),
-            "provider": "onlinevds.ru",
+            "name": "Демо · RDP сервер",
+            "hosting_account_id": accounts_by_provider.get("example-host.test"),
+            "provider": "example-host.test",
             "ip_address": "185.10.10.21",
             "location": "Россия",
             "server_login": "root",
@@ -532,14 +540,14 @@ def seed_demo_data() -> None:
             "currency": "RUB",
             "billing_period_days": 30,
             "next_payment_date": (today + timedelta(days=2)).isoformat(),
-            "payment_url": "https://onlinevds.ru/",
-            "panel_url": "https://onlinevds.ru/",
-            "notes": "Основной RDP для рабочих задач.",
+            "payment_url": "https://example.com/",
+            "panel_url": "https://example.com/",
+            "notes": "Пример сервера — удалите после добавления своих.",
         },
         {
-            "name": "Proxy Node 03",
-            "hosting_account_id": accounts_by_provider.get("qwins.co"),
-            "provider": "qwins.co",
+            "name": "Демо · Proxy Node",
+            "hosting_account_id": accounts_by_provider.get("demo-vps.test"),
+            "provider": "demo-vps.test",
             "ip_address": "91.200.14.8",
             "location": "Нидерланды",
             "server_login": "root",
@@ -549,14 +557,14 @@ def seed_demo_data() -> None:
             "currency": "USD",
             "billing_period_days": 30,
             "next_payment_date": (today + timedelta(days=6)).isoformat(),
-            "payment_url": "https://qwins.co/",
-            "panel_url": "https://qwins.co/",
-            "notes": "",
+            "payment_url": "https://example.com/",
+            "panel_url": "https://example.com/",
+            "notes": "Пример сервера — удалите после добавления своих.",
         },
         {
-            "name": "Landing Host",
-            "hosting_account_id": accounts_by_provider.get("hostoff.net"),
-            "provider": "hostoff.net",
+            "name": "Демо · веб-лендинг",
+            "hosting_account_id": accounts_by_provider.get("demo-web.test"),
+            "provider": "demo-web.test",
             "ip_address": "77.77.33.10",
             "location": "Россия",
             "server_login": "root",
@@ -566,9 +574,9 @@ def seed_demo_data() -> None:
             "currency": "RUB",
             "billing_period_days": 30,
             "next_payment_date": (today + timedelta(days=18)).isoformat(),
-            "payment_url": "https://hostoff.net/",
-            "panel_url": "https://hostoff.net/",
-            "notes": "Можно заменить при следующем продлении.",
+            "payment_url": "https://example.com/",
+            "panel_url": "https://example.com/",
+            "notes": "Пример сервера — удалите после добавления своих.",
         },
     ]
 

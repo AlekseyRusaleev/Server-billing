@@ -18,6 +18,12 @@ CREATE TABLE IF NOT EXISTS hosting_accounts (
     panel_url TEXT DEFAULT '',
     payment_url TEXT DEFAULT '',
     notes TEXT DEFAULT '',
+    integration_type TEXT NOT NULL DEFAULT 'manual',
+    integration_url TEXT DEFAULT '',
+    auto_sync_enabled INTEGER NOT NULL DEFAULT 0,
+    last_sync_at TEXT DEFAULT '',
+    last_sync_status TEXT DEFAULT '',
+    last_sync_message TEXT DEFAULT '',
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -109,6 +115,12 @@ def init_db() -> None:
         ensure_column(connection, "servers", "location", "TEXT DEFAULT ''")
         ensure_column(connection, "servers", "server_login", "TEXT DEFAULT ''")
         ensure_column(connection, "servers", "server_password", "TEXT DEFAULT ''")
+        ensure_column(connection, "hosting_accounts", "integration_type", "TEXT NOT NULL DEFAULT 'manual'")
+        ensure_column(connection, "hosting_accounts", "integration_url", "TEXT DEFAULT ''")
+        ensure_column(connection, "hosting_accounts", "auto_sync_enabled", "INTEGER NOT NULL DEFAULT 0")
+        ensure_column(connection, "hosting_accounts", "last_sync_at", "TEXT DEFAULT ''")
+        ensure_column(connection, "hosting_accounts", "last_sync_status", "TEXT DEFAULT ''")
+        ensure_column(connection, "hosting_accounts", "last_sync_message", "TEXT DEFAULT ''")
 
 
 @contextmanager

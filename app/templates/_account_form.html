@@ -36,6 +36,24 @@
     Заметки
     <textarea id="account-notes" name="notes" rows="3" placeholder="2FA, где искать счета, особенности входа">{{ account.notes if account else '' }}</textarea>
   </label>
+  <label>
+    Тип интеграции
+    <select id="account-integration-type" name="integration_type">
+      <option value="manual" {% if not account or account.integration_type == 'manual' %}selected{% endif %}>Ручной</option>
+      <option value="billmanager" {% if account and account.integration_type == 'billmanager' %}selected{% endif %}>BILLmanager</option>
+    </select>
+  </label>
+  <label class="integration-field">
+    URL биллинга (BILLmanager)
+    <input id="account-integration-url" name="integration_url" value="{{ account.integration_url if account else '' }}" placeholder="https://billing.provider.ru">
+  </label>
+  <label class="integration-field checkbox-label">
+    <input type="checkbox" id="account-auto-sync" name="auto_sync_enabled" value="on" {% if account and account.auto_sync_enabled %}checked{% endif %}>
+    Автосинхронизация услуг и дат оплаты
+  </label>
+  <p class="integration-field muted wide" id="account-integration-hint">
+    Ручной режим работает для любого хостера. BILLmanager-синхронизация подтягивает услуги, даты и суммы автоматически — подключение появится в следующем обновлении, поля можно заполнить заранее.
+  </p>
 </div>
 <script>
   (() => {
@@ -57,5 +75,18 @@
       const notes = [item.service_hint, item.notes].filter(Boolean).join("\n");
       setValue("#account-notes", notes);
     });
+
+    const integrationType = document.querySelector("#account-integration-type");
+    const integrationFields = document.querySelectorAll(".integration-field");
+    const toggleIntegration = () => {
+      const show = integrationType && integrationType.value !== "manual";
+      integrationFields.forEach((field) => {
+        field.style.display = show ? "" : "none";
+      });
+    };
+    if (integrationType) {
+      integrationType.addEventListener("change", toggleIntegration);
+      toggleIntegration();
+    }
   })();
 </script>
