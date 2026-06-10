@@ -342,8 +342,13 @@ td strong {
 }
 
 .actions {
-  display: flex;
-  justify-content: flex-end;
+  width: 1%;
+  white-space: nowrap;
+}
+
+.action-buttons {
+  display: inline-flex;
+  justify-content: flex-start;
   gap: 8px;
 }
 

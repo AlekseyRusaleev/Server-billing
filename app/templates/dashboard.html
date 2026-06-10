@@ -121,8 +121,10 @@
             <td>{{ "%g"|format(server.amount) }} {{ server.currency }}</td>
             <td><span class="badge {{ server.payment_state }}">{{ server.payment_label }}</span></td>
             <td class="actions">
-              <a class="icon-link" href="/servers/{{ server.id }}/pay" title="Открыть оплату">Оплата</a>
-              <a class="icon-link ghost" href="/servers/{{ server.id }}/edit" title="Редактировать">Правка</a>
+              <div class="action-buttons">
+                <a class="icon-link" href="/servers/{{ server.id }}/pay" title="Открыть оплату">Оплата</a>
+                <a class="icon-link ghost" href="/servers/{{ server.id }}/edit" title="Редактировать">Правка</a>
+              </div>
             </td>
           </tr>
           {% else %}
