@@ -1,0 +1,11 @@
+FROM docker:27-cli
+
+RUN apk add --no-cache docker-cli-compose git python3
+
+WORKDIR /repo
+
+COPY scripts/update_server.py /usr/local/bin/update_server.py
+
+EXPOSE 8765
+
+CMD ["python3", "/usr/local/bin/update_server.py"]

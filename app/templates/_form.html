@@ -32,7 +32,12 @@
   </label>
   <label>
     Валюта
-    <input name="currency" value="{{ server.currency if server else 'RUB' }}" maxlength="8">
+    <select name="currency">
+      {% set selected_currency = server.currency if server else "RUB" %}
+      <option value="RUB" {% if selected_currency == "RUB" %}selected{% endif %}>RUB · рубли</option>
+      <option value="USD" {% if selected_currency == "USD" %}selected{% endif %}>USD · доллары</option>
+      <option value="USDT" {% if selected_currency == "USDT" %}selected{% endif %}>USDT · Tether</option>
+    </select>
   </label>
   <label>
     Период, дней

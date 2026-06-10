@@ -33,9 +33,14 @@
 <div class="notice">Новый пароль должен быть не короче 8 символов и совпадать с повтором.</div>
 {% endif %}
 {% if rates == "1" %}
-<div class="notice success">Курсы ЦБ РФ обновлены.</div>
+<div class="notice success">Курсы валют обновлены.</div>
 {% elif rates == "0" %}
-<div class="notice">Не удалось обновить курсы ЦБ РФ.</div>
+<div class="notice">Не удалось обновить курсы валют.</div>
+{% endif %}
+{% if updated == "1" %}
+<div class="notice success">Обновление запущено. Подождите минуту и обновите страницу.</div>
+{% elif updated == "0" %}
+<div class="notice">Не удалось запустить обновление. Проверьте updater service и токен.</div>
 {% endif %}
 
 <section class="settings-grid">
@@ -71,7 +76,7 @@
       </label>
       <label>
         Базовая валюта
-        <select name="currency_base">
+        <select name="currency_base" id="currency-base-select">
           <option value="RUB" {% if currency.base == "RUB" %}selected{% endif %}>RUB · рубли</option>
           <option value="USD" {% if currency.base == "USD" %}selected{% endif %}>USD · доллары</option>
           <option value="USDT" {% if currency.base == "USDT" %}selected{% endif %}>USDT · Tether</option>
@@ -103,9 +108,26 @@
       <button class="secondary" type="submit">Проверить уведомления сейчас</button>
     </form>
     <form method="post" action="/settings/currency/refresh">
-      <button class="secondary" type="submit">Обновить курсы ЦБ РФ</button>
+      <button class="secondary" type="submit">Обновить курсы валют</button>
     </form>
     <p class="muted">Курсы обновлены: {{ currency.updated_at or "нет данных" }}</p>
+    <p class="muted">
+      Источник:
+      <a id="currency-source-link" href="{{ 'https://www.coingecko.com/en/coins/tether' if currency.base == 'USDT' else 'https://www.cbr.ru/scripts/XML_daily.asp' }}" target="_blank" rel="noreferrer">
+        {{ "CoinGecko USDT/RUB" if currency.base == "USDT" else "ЦБ РФ XML_daily" }}
+      </a>
+    </p>
+  </aside>
+
+  <aside class="panel">
+    <div class="panel-head">
+      <h2>Обновление</h2>
+      <span>{{ "готово" if update_enabled else "не настроено" }}</span>
+    </div>
+    <p class="muted">Кнопка подтянет свежую версию из репозитория и пересоберет Docker Compose на сервере.</p>
+    <form method="post" action="/settings/update">
+      <button class="secondary" type="submit" {% if not update_enabled %}disabled{% endif %}>Обновить сервис</button>
+    </form>
   </aside>
 
   <aside class="panel">
@@ -139,4 +161,18 @@
     <code class="code-block">cd /opt/server-billing<br>docker compose -f docker-compose.prod.yml up -d --force-recreate caddy scheduler</code>
   </aside>
 </section>
+<script>
+  const currencySelect = document.querySelector("#currency-base-select");
+  const sourceLink = document.querySelector("#currency-source-link");
+  const sources = {
+    RUB: ["https://www.cbr.ru/scripts/XML_daily.asp", "ЦБ РФ XML_daily"],
+    USD: ["https://www.cbr.ru/scripts/XML_daily.asp", "ЦБ РФ XML_daily"],
+    USDT: ["https://www.coingecko.com/en/coins/tether", "CoinGecko USDT/RUB"],
+  };
+  currencySelect?.addEventListener("change", () => {
+    const [href, text] = sources[currencySelect.value] || sources.RUB;
+    sourceLink.href = href;
+    sourceLink.textContent = text;
+  });
+</script>
 {% endblock %}

@@ -37,6 +37,20 @@ services:
     depends_on:
       - app
 
+  updater:
+    build:
+      context: .
+      dockerfile: Dockerfile.updater
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      INSTALL_DIR: /repo
+      UPDATER_TOKEN: ${APP_UPDATE_TOKEN:-}
+    volumes:
+      - .:/repo
+      - /var/run/docker.sock:/var/run/docker.sock
+
 volumes:
   caddy_data:
   caddy_config:

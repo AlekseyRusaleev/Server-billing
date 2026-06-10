@@ -62,7 +62,7 @@ write_env() {
   local app_encryption_key="$6"
   local bot_token="$7"
   local chat_id="$8"
-  local base_url site_address server_ip currency_rates currency_rates_updated_at
+  local base_url site_address server_ip currency_rates currency_rates_updated_at update_token
 
   server_ip="$(curl -fsS --max-time 5 https://api.ipify.org || hostname -I | awk '{print $1}')"
 
@@ -75,8 +75,10 @@ write_env() {
   fi
 
   currency_rates="$(python3 - <<'PY'
+import json
 import urllib.request
 import xml.etree.ElementTree as ET
+COINGECKO_USDT_RUB_URL = 'https://api.coingecko.com/api/v3/simple/price?ids=tether&vs_currencies=rub'
 try:
     with urllib.request.urlopen('https://www.cbr.ru/scripts/XML_daily.asp', timeout=15) as response:
         raw = response.read().decode('windows-1251')
@@ -88,12 +90,26 @@ try:
         value = float(item.findtext('Value', '0').replace(',', '.'))
         if code and nominal:
             rates[code] = value / nominal
+    try:
+        request = urllib.request.Request(COINGECKO_USDT_RUB_URL, headers={'User-Agent': 'server-billing-manager/1.0'})
+        with urllib.request.urlopen(request, timeout=15) as response:
+            usdt = json.loads(response.read().decode('utf-8')).get('tether', {}).get('rub')
+        if usdt:
+            rates['USDT'] = float(usdt)
+    except Exception:
+        if 'USD' in rates:
+            rates['USDT'] = rates['USD']
     print(','.join(f'{code}:{rate:.8f}' for code, rate in sorted(rates.items())))
 except Exception:
     print('RUB:1')
 PY
 )"
   currency_rates_updated_at="$(date +%F)"
+  update_token="$(python3 - <<'PY'
+import secrets
+print(secrets.token_urlsafe(32))
+PY
+)"
 
   umask 077
   cat > "$INSTALL_DIR/.env" <<EOF
@@ -115,6 +131,8 @@ BACKUP_INTERVAL_DAYS=7
 CURRENCY_BASE=RUB
 CURRENCY_RATES=$currency_rates
 CURRENCY_RATES_UPDATED_AT=$currency_rates_updated_at
+APP_UPDATE_URL=http://updater:8765/update
+APP_UPDATE_TOKEN=$update_token
 EOF
 }
 
@@ -185,7 +203,7 @@ PY
   echo "Open: $(grep '^BASE_URL=' .env | cut -d= -f2-)"
   echo "Login: $admin_username"
   echo "Project directory: $INSTALL_DIR"
-  echo "Update later with: cd $INSTALL_DIR && git pull && docker compose -f docker-compose.prod.yml up -d --build"
+  echo "Update later from the web panel or with: cd $INSTALL_DIR && git pull && docker compose -f docker-compose.prod.yml up -d --build"
 }
 
 main "$@"

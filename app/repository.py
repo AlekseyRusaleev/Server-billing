@@ -5,7 +5,7 @@ from collections import defaultdict
 
 from app.config import settings
 from app.crypto import decrypt_secret, encrypt_secret, is_encrypted
-from app.currency import fetch_cbr_rates, rates_from_string, rates_to_string, today_label
+from app.currency import fetch_currency_rates, rates_from_string, rates_to_string, today_label
 from app.db import connect
 from app.models import (
     HostingAccount,
@@ -288,7 +288,7 @@ def currency_settings() -> dict[str, object]:
 
 
 def refresh_currency_rates() -> dict[str, object]:
-    rates = fetch_cbr_rates()
+    rates = fetch_currency_rates()
     set_app_setting("currency_rates", rates_to_string(rates))
     set_app_setting("currency_rates_updated_at", today_label())
     if not get_app_setting("currency_base", ""):
@@ -316,16 +316,14 @@ def monthly_plan_summary(servers: list[Server] | None = None) -> dict[str, objec
     total_base = 0.0
     missing: list[str] = []
     for currency, amount in by_currency.items():
-        normalized_currency = "USD" if currency == "USDT" else currency
-        normalized_base = "USD" if base == "USDT" else base
-        if normalized_currency == normalized_base:
+        if currency == base:
             total_base += amount
-        elif normalized_currency == "RUB" and normalized_base in rates and rates[normalized_base]:
-            total_base += amount / rates[normalized_base]
-        elif normalized_currency in rates and normalized_base == "RUB":
-            total_base += amount * rates[normalized_currency]
-        elif normalized_currency in rates and normalized_base in rates and rates[normalized_base]:
-            total_base += amount * rates[normalized_currency] / rates[normalized_base]
+        elif currency == "RUB" and base in rates and rates[base]:
+            total_base += amount / rates[base]
+        elif currency in rates and base == "RUB":
+            total_base += amount * rates[currency]
+        elif currency in rates and base in rates and rates[base]:
+            total_base += amount * rates[currency] / rates[base]
         else:
             missing.append(currency)
 

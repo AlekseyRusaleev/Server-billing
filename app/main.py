@@ -35,11 +35,14 @@ from app.repository import (
     update_server,
 )
 from app.reminders import send_backup, send_due_reminders, send_telegram
+from app.system_update import start_system_update
 from app.telegram import build_telegram_share_url
 
 app = FastAPI(title=settings.app_name)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
+
+SUPPORTED_CURRENCIES = {"RUB", "USD", "USDT"}
 
 
 @app.on_event("startup")
@@ -115,6 +118,9 @@ def form_payload(
     panel_url: str,
     notes: str,
 ) -> dict[str, object]:
+    normalized_currency = currency.strip().upper() or "RUB"
+    if normalized_currency not in SUPPORTED_CURRENCIES:
+        normalized_currency = "RUB"
     return {
         "hosting_account_id": hosting_account_id or None,
         "name": name.strip(),
@@ -122,7 +128,7 @@ def form_payload(
         "ip_address": ip_address.strip(),
         "service_id": service_id.strip(),
         "amount": amount,
-        "currency": currency.strip().upper() or "RUB",
+        "currency": normalized_currency,
         "billing_period_days": billing_period_days,
         "next_payment_date": next_payment_date,
         "payment_url": payment_url.strip(),
@@ -376,6 +382,8 @@ def settings_page(request: Request, saved: str = "", tested: str = "") -> HTMLRe
             "backup_sent": request.query_params.get("backup_sent", ""),
             "checked": request.query_params.get("checked", ""),
             "rates": request.query_params.get("rates", ""),
+            "updated": request.query_params.get("updated", ""),
+            "update_enabled": bool(settings.app_update_url and settings.app_update_token),
         },
     )
 
@@ -438,6 +446,16 @@ def run_reminder_check() -> RedirectResponse:
         return RedirectResponse(f"/settings?checked={sent}", status_code=303)
     except Exception:
         return RedirectResponse("/settings?checked=error", status_code=303)
+
+
+@app.post("/settings/update")
+def update_application() -> RedirectResponse:
+    try:
+        started, _message = start_system_update()
+        result = "1" if started else "0"
+    except Exception:
+        result = "0"
+    return RedirectResponse(f"/settings?updated={result}", status_code=303)
 
 
 @app.post("/settings/password")
