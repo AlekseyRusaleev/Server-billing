@@ -37,10 +37,17 @@
   </div>
   <div class="onboarding-grid">
     {% for item in onboarding %}
+    {% if item.action == "open-server-modal" and not item.done %}
+    <button class="onboarding-item" type="button" onclick="document.querySelector('#add-server').showModal()">
+      <span>·</span>
+      <strong>{{ item.label }}</strong>
+    </button>
+    {% else %}
     <a class="onboarding-item {{ 'done' if item.done else '' }}" href="{{ item.href }}">
       <span>{{ "✓" if item.done else "·" }}</span>
       <strong>{{ item.label }}</strong>
     </a>
+    {% endif %}
     {% endfor %}
   </div>
 </section>

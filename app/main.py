@@ -177,7 +177,12 @@ def dashboard(
     current_notifications = notification_settings()
     onboarding = [
         {"label": "Создать аккаунт хостинга", "done": bool(accounts), "href": "/accounts"},
-        {"label": "Добавить первый сервер", "done": bool(all_servers), "href": "/"},
+        {
+            "label": "Добавить первый сервер",
+            "done": bool(all_servers),
+            "href": "#add-server",
+            "action": "open-server-modal",
+        },
         {
             "label": "Настроить Telegram",
             "done": bool(current_notifications.get("telegram_bot_token") and current_notifications.get("telegram_chat_id")),
