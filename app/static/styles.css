@@ -666,7 +666,78 @@ td strong {
 
 .provider-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
+}
+
+.provider-picker {
+  margin-bottom: 18px;
+}
+
+.country-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.country-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  padding: 8px 12px;
+  color: var(--text);
+}
+
+.country-chip.active {
+  border-color: #b9cef6;
+  background: #f3f7ff;
+  color: var(--blue);
+}
+
+.provider-template-list {
+  display: grid;
+  gap: 12px;
+}
+
+.provider-template {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(190px, 240px) auto;
+  gap: 16px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  padding: 16px;
+}
+
+.provider-template p {
+  margin: 8px 0 12px;
+  color: #3a4655;
+}
+
+.provider-template dl {
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.provider-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.provider-tags span {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #f8fafc;
+  padding: 5px 9px;
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .auth-box {
@@ -889,7 +960,8 @@ td strong {
 @media (max-width: 1100px) {
   .filter-bar form,
   .settings-grid,
-  .provider-row {
+  .provider-row,
+  .provider-template {
     grid-template-columns: 1fr;
   }
 

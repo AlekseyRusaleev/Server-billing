@@ -135,6 +135,7 @@
         <select name="currency_base" id="currency-base-select">
           <option value="RUB" {% if currency.base == "RUB" %}selected{% endif %}>RUB · рубли</option>
           <option value="USD" {% if currency.base == "USD" %}selected{% endif %}>USD · доллары</option>
+          <option value="EUR" {% if currency.base == "EUR" %}selected{% endif %}>EUR · евро</option>
           <option value="USDT" {% if currency.base == "USDT" %}selected{% endif %}>USDT · Tether</option>
         </select>
       </label>
@@ -233,14 +234,6 @@
     </form>
   </aside>
 
-  <aside class="panel">
-    <div class="panel-head">
-      <h2>Домен</h2>
-      <span>Caddy</span>
-    </div>
-    <p class="muted">Сейчас можно пользоваться адресом из Base URL. Для своего домена создайте DNS A-запись на IP сервера, затем поменяйте `BASE_URL` и `CADDY_SITE_ADDRESS` в `.env` и перезапустите Caddy.</p>
-    <code class="code-block">cd /opt/server-billing<br>docker compose -f docker-compose.prod.yml up -d --force-recreate caddy scheduler</code>
-  </aside>
 </section>
 <script>
   const currencySelect = document.querySelector("#currency-base-select");
@@ -248,6 +241,7 @@
   const sources = {
     RUB: ["https://www.cbr.ru/scripts/XML_daily.asp", "ЦБ РФ XML_daily"],
     USD: ["https://www.cbr.ru/scripts/XML_daily.asp", "ЦБ РФ XML_daily"],
+    EUR: ["https://www.cbr.ru/scripts/XML_daily.asp", "ЦБ РФ XML_daily"],
     USDT: ["https://www.coingecko.com/en/coins/tether", "CoinGecko USDT/RUB"],
   };
   currencySelect?.addEventListener("change", () => {

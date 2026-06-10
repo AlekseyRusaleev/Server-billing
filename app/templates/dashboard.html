@@ -97,6 +97,7 @@
             <td>
               <strong>{{ server.name }}</strong>
               <small>{{ server.ip_address or "IP не указан" }}</small>
+              {% if server.location %}<small>{{ server.location }}</small>{% endif %}
             </td>
             <td>
               {{ server.provider }}
@@ -104,7 +105,7 @@
             </td>
             <td>
               {{ server.account_name or "не привязан" }}
-              <small>{{ server.account_login or "логин не указан" }}</small>
+              <small>{{ server.account_login or server.server_login or "логин не указан" }}</small>
             </td>
             <td>
               {{ server.next_payment_date.strftime("%d.%m.%Y") }}

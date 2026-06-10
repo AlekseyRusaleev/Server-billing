@@ -5,7 +5,7 @@
     "website_url": "https://www.hetzner.com/cloud",
     "panel_url": "https://console.hetzner.com/",
     "payment_url": "https://accounts.hetzner.com/",
-    "default_currency": "",
+    "default_currency": "EUR",
     "billing_period_days": 30,
     "service_hint": "Cloud Console: проект -> Servers -> нужный сервер.",
     "notes": "Популярный EU-провайдер VPS, cloud и dedicated. Проверь, включена ли почасовая или месячная тарификация."
@@ -49,7 +49,7 @@
     "website_url": "https://www.ovhcloud.com/",
     "panel_url": "https://www.ovh.com/manager/",
     "payment_url": "https://www.ovh.com/manager/#/dedicated/billing",
-    "default_currency": "USD",
+    "default_currency": "EUR",
     "billing_period_days": 30,
     "service_hint": "OVHcloud Manager: Bare Metal & VPS -> нужная услуга.",
     "notes": "VPS, dedicated, bare metal и облачные сервисы. Регион панели может отличаться."
@@ -60,7 +60,7 @@
     "website_url": "https://www.scaleway.com/",
     "panel_url": "https://console.scaleway.com/",
     "payment_url": "https://console.scaleway.com/billing",
-    "default_currency": "",
+    "default_currency": "EUR",
     "billing_period_days": 30,
     "service_hint": "Console: Instances -> нужный instance.",
     "notes": "EU cloud provider: instances, dedibox, storage, managed services."
@@ -71,7 +71,7 @@
     "website_url": "https://contabo.com/",
     "panel_url": "https://my.contabo.com/account/login",
     "payment_url": "https://my.contabo.com/",
-    "default_currency": "",
+    "default_currency": "EUR",
     "billing_period_days": 30,
     "service_hint": "Customer Control Panel: Your services -> VPS/VDS.",
     "notes": "VPS и dedicated с месячной оплатой. Логин обычно приходит в письме после заказа."
@@ -149,7 +149,7 @@
     "website_url": "https://aeza.net/",
     "panel_url": "https://my.aeza.net/",
     "payment_url": "https://my.aeza.net/",
-    "default_currency": "",
+    "default_currency": "EUR",
     "billing_period_days": 30,
     "telegram_access": true,
     "service_hint": "Личный кабинет: услуги -> виртуальные или выделенные серверы.",
@@ -161,7 +161,7 @@
     "website_url": "https://fornex.com/",
     "panel_url": "https://fornex.com/my/",
     "payment_url": "https://fornex.com/my/",
-    "default_currency": "",
+    "default_currency": "EUR",
     "billing_period_days": 30,
     "service_hint": "Личный кабинет: услуги -> VPS/сервер.",
     "notes": "VPS, хостинг и выделенные серверы. В заметках удобно хранить страну/локацию."

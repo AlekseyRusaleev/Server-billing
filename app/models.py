@@ -43,6 +43,9 @@ class Server:
     name: str
     provider: str
     ip_address: str
+    location: str
+    server_login: str
+    server_password: str
     service_id: str
     amount: float
     currency: str
@@ -124,6 +127,9 @@ def server_from_row(row: Row) -> Server:
         name=row["name"],
         provider=row["provider"],
         ip_address=row["ip_address"] or "",
+        location=str(row_value(row, "location", "") or ""),
+        server_login=str(row_value(row, "server_login", "") or ""),
+        server_password=decrypt_secret(str(row_value(row, "server_password", "") or "")),
         service_id=row["service_id"] or "",
         amount=float(row["amount"] or 0),
         currency=row["currency"],

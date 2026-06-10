@@ -27,6 +27,7 @@
     </div>
     <dl>
       <div><dt>IP</dt><dd>{{ server.ip_address or "не указан" }}</dd></div>
+      <div><dt>Страна / локация</dt><dd>{{ server.location or "не указана" }}</dd></div>
       <div><dt>ID услуги</dt><dd>{{ server.service_id or "не указан" }}</dd></div>
       <div><dt>Период</dt><dd>{{ server.billing_period_days }} дней</dd></div>
       <div><dt>Последняя отметка</dt><dd>{{ server.last_paid_at or "еще не отмечалось" }}</dd></div>
@@ -48,10 +49,12 @@
       </form>
       <a class="secondary-link" href="{{ telegram_share_url }}" target="_blank" rel="noreferrer">Текст для Telegram</a>
     </div>
-    {% if server.account_name or server.account_login or server.account_secret %}
+    {% if server.server_login or server.server_password or server.account_name or server.account_login or server.account_secret %}
     <section class="auth-box">
       <h2>Данные входа</h2>
       <dl>
+        <div><dt>Логин сервера</dt><dd>{{ server.server_login or "не указан" }}</dd></div>
+        <div><dt>Пароль сервера</dt><dd>{{ server.server_password or "не указан" }}</dd></div>
         <div><dt>Аккаунт</dt><dd>{{ server.account_name or "не привязан" }}</dd></div>
         <div><dt>Логин</dt><dd>{{ server.account_login or "не указан" }}</dd></div>
         <div><dt>Секрет</dt><dd>{{ server.account_secret or "не указан" }}</dd></div>

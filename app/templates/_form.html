@@ -10,7 +10,7 @@
   </label>
   <label class="wide">
     Аккаунт хостинга
-    <select name="hosting_account_id">
+    <select id="server-hosting-account" name="hosting_account_id">
       <option value="0">Без привязки</option>
       {% for account in accounts %}
       <option value="{{ account.id }}" {% if server and server.hosting_account_id == account.id %}selected{% endif %}>
@@ -32,6 +32,18 @@
     <input name="ip_address" value="{{ server.ip_address if server else '' }}" placeholder="192.0.2.10">
   </label>
   <label>
+    Страна / локация
+    <input id="server-location" name="location" value="{{ server.location if server else '' }}" placeholder="Нидерланды">
+  </label>
+  <label>
+    Логин сервера
+    <input name="server_login" value="{{ server.server_login if server else '' }}" placeholder="root">
+  </label>
+  <label>
+    Пароль сервера
+    <input type="password" name="server_password" value="{{ server.server_password if server else '' }}" autocomplete="new-password" placeholder="пароль от сервера">
+  </label>
+  <label>
     ID услуги
     <input name="service_id" value="{{ server.service_id if server else '' }}" placeholder="vds-1021">
   </label>
@@ -45,6 +57,7 @@
       {% set selected_currency = server.currency if server else "RUB" %}
       <option value="RUB" {% if selected_currency == "RUB" %}selected{% endif %}>RUB · рубли</option>
       <option value="USD" {% if selected_currency == "USD" %}selected{% endif %}>USD · доллары</option>
+      <option value="EUR" {% if selected_currency == "EUR" %}selected{% endif %}>EUR · евро</option>
       <option value="USDT" {% if selected_currency == "USDT" %}selected{% endif %}>USDT · Tether</option>
     </select>
   </label>
@@ -80,14 +93,22 @@
 <script>
   (() => {
     const templates = {{ provider_templates|tojson }};
+    const accounts = {{ account_options|default([])|tojson }};
     const select = document.querySelector("#server-provider-template");
-    if (!select) return;
+    const accountSelect = document.querySelector("#server-hosting-account");
     const setValue = (selector, value, overwrite = false) => {
       const field = document.querySelector(selector);
       if (!field || value === undefined || value === null || value === "") return;
       if (overwrite || !field.value) field.value = value;
     };
-    select.addEventListener("change", () => {
+    accountSelect?.addEventListener("change", () => {
+      const item = accounts.find((account) => String(account.id) === accountSelect.value);
+      if (!item) return;
+      setValue("#server-provider", item.provider, true);
+      setValue("#server-panel-url", item.panel_url);
+      setValue("#server-payment-url", item.payment_url || item.panel_url);
+    });
+    select?.addEventListener("change", () => {
       const item = templates[Number(select.value)];
       if (!item) return;
       setValue("#server-provider", item.domain || item.name, true);

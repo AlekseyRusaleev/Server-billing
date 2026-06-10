@@ -121,6 +121,8 @@ def list_servers(
                     server.name,
                     server.provider,
                     server.ip_address,
+                    server.location,
+                    server.server_login,
                     server.service_id,
                     server.account_name,
                     server.account_login,
@@ -147,15 +149,19 @@ def create_server(data: dict[str, object]) -> int:
         cursor = connection.execute(
             """
             INSERT INTO servers (
-                hosting_account_id, name, provider, ip_address, service_id, amount, currency,
-                billing_period_days, next_payment_date, payment_url, panel_url, notes
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                hosting_account_id, name, provider, ip_address, location, server_login,
+                server_password, service_id, amount, currency, billing_period_days,
+                next_payment_date, payment_url, panel_url, notes
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 data.get("hosting_account_id"),
                 data["name"],
                 data["provider"],
                 data.get("ip_address", ""),
+                data.get("location", ""),
+                data.get("server_login", ""),
+                encrypt_secret(str(data.get("server_password", ""))),
                 data.get("service_id", ""),
                 data["amount"],
                 data["currency"],
@@ -174,9 +180,9 @@ def update_server(server_id: int, data: dict[str, object]) -> None:
         connection.execute(
             """
             UPDATE servers
-            SET hosting_account_id = ?, name = ?, provider = ?, ip_address = ?, service_id = ?, amount = ?,
-                currency = ?, billing_period_days = ?, next_payment_date = ?,
-                payment_url = ?, panel_url = ?, notes = ?
+            SET hosting_account_id = ?, name = ?, provider = ?, ip_address = ?, location = ?,
+                server_login = ?, server_password = ?, service_id = ?, amount = ?, currency = ?,
+                billing_period_days = ?, next_payment_date = ?, payment_url = ?, panel_url = ?, notes = ?
             WHERE id = ?
             """,
             (
@@ -184,6 +190,9 @@ def update_server(server_id: int, data: dict[str, object]) -> None:
                 data["name"],
                 data["provider"],
                 data.get("ip_address", ""),
+                data.get("location", ""),
+                data.get("server_login", ""),
+                encrypt_secret(str(data.get("server_password", ""))),
                 data.get("service_id", ""),
                 data["amount"],
                 data["currency"],
@@ -433,6 +442,14 @@ def encrypt_existing_secrets() -> None:
                     "UPDATE hosting_accounts SET auth_secret = ? WHERE id = ?",
                     (encrypt_secret(value), row["id"]),
                 )
+        rows = connection.execute("SELECT id, server_password FROM servers").fetchall()
+        for row in rows:
+            value = row["server_password"] or ""
+            if value and not is_encrypted(value):
+                connection.execute(
+                    "UPDATE servers SET server_password = ? WHERE id = ?",
+                    (encrypt_secret(value), row["id"]),
+                )
         rows = connection.execute(
             "SELECT key, value FROM app_settings WHERE key IN ('telegram_bot_token')"
         ).fetchall()
@@ -507,6 +524,9 @@ def seed_demo_data() -> None:
             "hosting_account_id": accounts_by_provider.get("onlinevds.ru"),
             "provider": "onlinevds.ru",
             "ip_address": "185.10.10.21",
+            "location": "Россия",
+            "server_login": "root",
+            "server_password": "demo-password",
             "service_id": "vds-1021",
             "amount": 950,
             "currency": "RUB",
@@ -521,6 +541,9 @@ def seed_demo_data() -> None:
             "hosting_account_id": accounts_by_provider.get("qwins.co"),
             "provider": "qwins.co",
             "ip_address": "91.200.14.8",
+            "location": "Нидерланды",
+            "server_login": "root",
+            "server_password": "demo-password",
             "service_id": "q-7781",
             "amount": 12,
             "currency": "USD",
@@ -535,6 +558,9 @@ def seed_demo_data() -> None:
             "hosting_account_id": accounts_by_provider.get("hostoff.net"),
             "provider": "hostoff.net",
             "ip_address": "77.77.33.10",
+            "location": "Россия",
+            "server_login": "root",
+            "server_password": "demo-password",
             "service_id": "h-428",
             "amount": 420,
             "currency": "RUB",

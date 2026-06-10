@@ -28,6 +28,9 @@ CREATE TABLE IF NOT EXISTS servers (
     name TEXT NOT NULL,
     provider TEXT NOT NULL,
     ip_address TEXT DEFAULT '',
+    location TEXT DEFAULT '',
+    server_login TEXT DEFAULT '',
+    server_password TEXT DEFAULT '',
     service_id TEXT DEFAULT '',
     amount REAL NOT NULL DEFAULT 0,
     currency TEXT NOT NULL DEFAULT 'RUB',
@@ -103,6 +106,9 @@ def init_db() -> None:
     with sqlite3.connect(path) as connection:
         connection.executescript(SCHEMA)
         ensure_column(connection, "servers", "hosting_account_id", "INTEGER DEFAULT NULL")
+        ensure_column(connection, "servers", "location", "TEXT DEFAULT ''")
+        ensure_column(connection, "servers", "server_login", "TEXT DEFAULT ''")
+        ensure_column(connection, "servers", "server_password", "TEXT DEFAULT ''")
 
 
 @contextmanager

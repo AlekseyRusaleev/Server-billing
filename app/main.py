@@ -35,7 +35,7 @@ from app.repository import (
     update_server,
 )
 from app.reminders import send_backup, send_due_reminders, send_telegram
-from app.provider_templates import list_provider_templates
+from app.provider_templates import list_provider_templates, provider_countries
 from app.system_update import start_system_update
 from app.telegram import build_telegram_share_url, detect_telegram_chats, telegram_bot_username
 from app.version import current_version
@@ -44,7 +44,7 @@ app = FastAPI(title=settings.app_name)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
 
-SUPPORTED_CURRENCIES = {"RUB", "USD", "USDT"}
+SUPPORTED_CURRENCIES = {"RUB", "USD", "EUR", "USDT"}
 DONATION_URL = "https://t.me/AlekseyRdonate_bot"
 templates.env.globals["donation_url"] = DONATION_URL
 
@@ -113,6 +113,9 @@ def form_payload(
     name: str,
     provider: str,
     ip_address: str,
+    location: str,
+    server_login: str,
+    server_password: str,
     service_id: str,
     amount: float,
     currency: str,
@@ -130,6 +133,9 @@ def form_payload(
         "name": name.strip(),
         "provider": provider.strip(),
         "ip_address": ip_address.strip(),
+        "location": location.strip(),
+        "server_login": server_login.strip(),
+        "server_password": server_password.strip(),
         "service_id": service_id.strip(),
         "amount": amount,
         "currency": normalized_currency,
@@ -171,6 +177,20 @@ def account_payload(
     }
 
 
+def account_form_options(accounts) -> list[dict[str, object]]:
+    return [
+        {
+            "id": account.id,
+            "name": account.name,
+            "provider": account.provider,
+            "login": account.login,
+            "panel_url": account.panel_url,
+            "payment_url": account.payment_url,
+        }
+        for account in accounts
+    ]
+
+
 @app.get("/", response_class=HTMLResponse)
 def dashboard(
     request: Request,
@@ -210,6 +230,7 @@ def dashboard(
             "request": request,
             "servers": servers,
             "accounts": accounts,
+            "account_options": account_form_options(accounts),
             "providers": providers,
             "filters": {"q": q, "provider": provider, "state": state},
             "monthly_plan": monthly_plan,
@@ -233,6 +254,9 @@ def add_server(
     name: str = Form(...),
     provider: str = Form(...),
     ip_address: str = Form(""),
+    location: str = Form(""),
+    server_login: str = Form(""),
+    server_password: str = Form(""),
     service_id: str = Form(""),
     amount: float = Form(0),
     currency: str = Form("RUB"),
@@ -248,6 +272,9 @@ def add_server(
             name,
             provider,
             ip_address,
+            location,
+            server_login,
+            server_password,
             service_id,
             amount,
             currency,
@@ -266,12 +293,14 @@ def edit_server(request: Request, server_id: int) -> HTMLResponse:
     server = get_server(server_id)
     if server is None:
         raise HTTPException(status_code=404)
+    accounts = list_accounts()
     return templates.TemplateResponse(
         "edit.html",
         {
             "request": request,
             "server": server,
-            "accounts": list_accounts(),
+            "accounts": accounts,
+            "account_options": account_form_options(accounts),
             "provider_templates": list_provider_templates(),
             "donation_url": DONATION_URL,
         },
@@ -285,6 +314,9 @@ def save_server(
     name: str = Form(...),
     provider: str = Form(...),
     ip_address: str = Form(""),
+    location: str = Form(""),
+    server_login: str = Form(""),
+    server_password: str = Form(""),
     service_id: str = Form(""),
     amount: float = Form(0),
     currency: str = Form("RUB"),
@@ -301,6 +333,9 @@ def save_server(
             name,
             provider,
             ip_address,
+            location,
+            server_login,
+            server_password,
             service_id,
             amount,
             currency,
@@ -402,12 +437,32 @@ def history_page(request: Request) -> HTMLResponse:
 
 
 @app.get("/providers", response_class=HTMLResponse)
-def providers_page(request: Request) -> HTMLResponse:
+def providers_page(request: Request, country: str = "") -> HTMLResponse:
+    providers = list_provider_templates()
+    selected_country = country.strip().upper()
+    filtered_providers = [
+        provider
+        for provider in providers
+        if not selected_country or selected_country in provider.get("countries", [])
+    ]
+    countries = provider_countries(providers)
+    selected_country_name = next(
+        (item["name"] for item in countries if item["code"] == selected_country),
+        "",
+    )
+    accounts = list_accounts()
     return templates.TemplateResponse(
         "providers.html",
         {
             "request": request,
-            "providers": list_provider_templates(),
+            "providers": filtered_providers,
+            "all_providers": providers,
+            "countries": countries,
+            "selected_country": selected_country,
+            "selected_country_name": selected_country_name,
+            "accounts": accounts,
+            "account_options": account_form_options(accounts),
+            "provider_templates": providers,
             "donation_url": DONATION_URL,
         },
     )
