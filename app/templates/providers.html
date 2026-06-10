@@ -2,52 +2,43 @@
 {% block content %}
 <section class="page-head">
   <div>
-    <p class="eyebrow">Каталог</p>
-    <h1>Провайдеры</h1>
+    <p class="eyebrow">Справочник</p>
+    <h1>Шаблоны провайдеров</h1>
   </div>
   <a class="secondary-link" href="/accounts">Добавить аккаунт</a>
 </section>
 
 <section class="panel">
   <div class="panel-head">
-    <h2>Шаблоны и рекомендации</h2>
+    <h2>Быстрое заполнение</h2>
     <span>{{ providers|length }} провайдеров</span>
   </div>
-  <p class="muted">Шаблоны помогают быстрее заполнить кабинет, ссылки и валюту. Если у проекта появится реферальная ссылка, кнопка сайта будет вести через нее.</p>
-  <div class="provider-grid">
+  <p class="muted">Шаблоны подставляют домен, ссылки, валюту и подсказку по ID услуги. Выбор провайдера остается ручным, список нужен только для ускорения заполнения.</p>
+  <div class="provider-list">
     {% for provider in providers %}
-    <article class="provider-card">
-      <div class="provider-card-head">
-        <div>
-          <span class="account-provider">{{ provider.domain }}</span>
-          <h2>{{ provider.name }}</h2>
-        </div>
+    <article class="provider-row">
+      <div class="provider-main">
+        <span class="account-provider">{{ provider.domain }}</span>
+        <h2>{{ provider.name }}</h2>
+        <p>{{ provider.notes }}</p>
+        <small class="muted">{{ provider.service_hint }}</small>
+      </div>
+      <div class="provider-meta">
+        <span>{{ provider.default_currency or "валюта вручную" }}</span>
+        <span>{{ provider.billing_period_days }} дн.</span>
+        {% if provider.telegram_access %}
+        <span>Telegram-доступ</span>
+        {% endif %}
         {% if provider.referral_url %}
-        <span class="recommend-badge">Реферальная</span>
-        {% elif provider.telegram_access %}
-        <span class="recommend-badge soft">Telegram</span>
+        <span>партнерская ссылка</span>
         {% endif %}
       </div>
-      <p>{{ provider.notes }}</p>
-      <dl>
-        <div><dt>Валюта</dt><dd>{{ provider.default_currency or "вручную" }}</dd></div>
-        <div><dt>Период</dt><dd>{{ provider.billing_period_days }} дн.</dd></div>
-      </dl>
-      <small class="muted">{{ provider.service_hint }}</small>
-      <div class="account-actions">
-        <a class="primary" href="{{ provider.referral_url or provider.website_url }}" target="_blank" rel="noreferrer">Открыть сайт</a>
+      <div class="provider-actions">
+        <a class="secondary-link" href="{{ provider.referral_url or provider.website_url }}" target="_blank" rel="noreferrer">Сайт</a>
         <a class="secondary-link" href="{{ provider.panel_url }}" target="_blank" rel="noreferrer">Кабинет</a>
       </div>
     </article>
     {% endfor %}
   </div>
-</section>
-
-<section class="panel support-panel">
-  <div>
-    <h2>Поддержать проект</h2>
-    <p class="muted">Server Billing Manager бесплатный. Если он экономит время, можно поддержать разработку через Telegram Stars.</p>
-  </div>
-  <a class="primary" href="{{ donation_url }}" target="_blank" rel="noreferrer">Поддержать разработку</a>
 </section>
 {% endblock %}

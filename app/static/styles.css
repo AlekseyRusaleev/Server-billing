@@ -602,59 +602,39 @@ dd {
   gap: 8px;
 }
 
-.provider-grid {
+.provider-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 12px;
+  gap: 0;
   margin-top: 16px;
+  border-top: 1px solid var(--line);
 }
 
-.provider-card {
+.provider-row {
   display: grid;
-  gap: 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 16px;
+  grid-template-columns: minmax(320px, 1fr) minmax(180px, 260px) auto;
+  gap: 16px;
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  padding: 16px 0;
 }
 
-.provider-card p {
-  margin: 0;
+.provider-main p {
+  margin: 7px 0;
   color: #3a4655;
 }
 
-.provider-card dl {
-  margin-bottom: 0;
-}
-
-.provider-card-head,
-.support-panel {
+.provider-meta {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-wrap: wrap;
   gap: 12px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
 }
 
-.recommend-badge {
-  border-radius: 999px;
-  background: #fff0d9;
-  color: #915100;
-  padding: 6px 9px;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.recommend-badge.soft {
-  background: #eaf8f2;
-  color: var(--green);
-}
-
-.support-panel {
-  margin-top: 18px;
-  padding: 18px;
-}
-
-.support-panel p {
-  margin: 6px 0 0;
+.provider-actions {
+  display: flex;
+  gap: 8px;
 }
 
 .auth-box {
@@ -778,8 +758,13 @@ dd {
 
 @media (max-width: 1100px) {
   .filter-bar form,
-  .settings-grid {
+  .settings-grid,
+  .provider-row {
     grid-template-columns: 1fr;
+  }
+
+  .provider-actions {
+    flex-wrap: wrap;
   }
 }
 
@@ -830,8 +815,7 @@ dd {
 
   .page-head,
   .pay-actions,
-  .form-actions,
-  .support-panel {
+  .form-actions {
     align-items: stretch;
     flex-direction: column;
   }
