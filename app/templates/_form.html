@@ -89,6 +89,10 @@
     Заметки
     <textarea id="server-notes" name="notes" rows="3" placeholder="Что важно помнить">{{ server.notes if server else '' }}</textarea>
   </label>
+  <label class="wide checkbox-label">
+    <input type="checkbox" name="sync_locked" value="on" {% if server and server.sync_locked %}checked{% endif %}>
+    Не перезаписывать при автосинхронизации (защитить ручные правки)
+  </label>
 </div>
 <script>
   (() => {

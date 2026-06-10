@@ -78,6 +78,8 @@ class Server:
     created_at: str
     updated_at: str
     last_paid_at: str
+    sync_locked: bool = False
+    external_synced_at: str = ""
     account_name: str = ""
     account_login: str = ""
     account_secret: str = ""
@@ -168,6 +170,8 @@ def server_from_row(row: Row) -> Server:
         created_at=row["created_at"],
         updated_at=row["updated_at"],
         last_paid_at=row["last_paid_at"] or "",
+        sync_locked=bool(row_value(row, "sync_locked", 0)),
+        external_synced_at=str(row_value(row, "external_synced_at", "") or ""),
         account_name=str(row_value(row, "account_name", "") or ""),
         account_login=str(row_value(row, "account_login", "") or ""),
         account_secret=decrypt_secret(str(row_value(row, "account_secret", "") or "")),

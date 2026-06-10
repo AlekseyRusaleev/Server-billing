@@ -49,6 +49,8 @@ CREATE TABLE IF NOT EXISTS servers (
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     last_paid_at TEXT DEFAULT '',
+    sync_locked INTEGER NOT NULL DEFAULT 0,
+    external_synced_at TEXT DEFAULT '',
     FOREIGN KEY (hosting_account_id) REFERENCES hosting_accounts(id) ON DELETE SET NULL
 );
 
@@ -121,6 +123,8 @@ def init_db() -> None:
         ensure_column(connection, "hosting_accounts", "last_sync_at", "TEXT DEFAULT ''")
         ensure_column(connection, "hosting_accounts", "last_sync_status", "TEXT DEFAULT ''")
         ensure_column(connection, "hosting_accounts", "last_sync_message", "TEXT DEFAULT ''")
+        ensure_column(connection, "servers", "sync_locked", "INTEGER NOT NULL DEFAULT 0")
+        ensure_column(connection, "servers", "external_synced_at", "TEXT DEFAULT ''")
 
 
 @contextmanager

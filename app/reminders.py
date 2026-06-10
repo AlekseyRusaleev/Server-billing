@@ -17,6 +17,7 @@ from app.repository import (
     mark_backup_sent,
     notification_settings,
 )
+from app.provider_sync import SyncResult, sync_due_accounts
 from app.telegram import build_payment_deeplink
 
 logger = logging.getLogger(__name__)
@@ -211,21 +212,49 @@ def send_due_reminders() -> int:
     return sent
 
 
+def build_sync_message(result: SyncResult) -> str:
+    lines = [f"Синхронизация: {result.account_name}", result.message]
+    if result.changes:
+        lines.append("")
+        lines.extend(result.changes[:15])
+    if result.missing:
+        lines.append("")
+        lines.append("Пропали у провайдера: " + ", ".join(result.missing[:15]))
+    return "\n".join(lines)
+
+
+def run_provider_sync() -> int:
+    """Запускает автосинхронизацию и уведомляет в Telegram об изменениях."""
+    notified = 0
+    for result in sync_due_accounts():
+        if result.ok and result.has_changes:
+            try:
+                if send_telegram(build_sync_message(result)):
+                    notified += 1
+            except Exception:
+                logger.exception("Failed to send sync notification for account %s", result.account_id)
+        elif not result.ok:
+            logger.warning("Sync error for %s: %s", result.account_name, result.message)
+    return notified
+
+
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     logger.info("Reminder worker started.")
     while True:
         try:
+            synced = run_provider_sync()
             sent = send_due_reminders()
             backup_sent = send_due_backup()
             logger.info(
-                "Reminder check finished. Sent: %s. Backup sent: %s. Date: %s",
+                "Check finished. Synced accounts notified: %s. Reminders sent: %s. Backup sent: %s. Date: %s",
+                synced,
                 sent,
                 backup_sent,
                 date.today(),
             )
         except Exception:
-            logger.exception("Reminder check failed.")
+            logger.exception("Scheduled check failed.")
         interval = int(notification_settings().get("check_interval_seconds", 86400))
         time.sleep(interval)
 

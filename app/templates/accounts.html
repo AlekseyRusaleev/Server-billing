@@ -8,6 +8,17 @@
   <button class="primary" onclick="document.querySelector('#add-account').showModal()">+ Аккаунт</button>
 </section>
 
+{% if synced == 'ok' %}
+<section class="panel"><p class="notice ok">Синхронизация выполнена. Подробности — в статусе аккаунта ниже.</p></section>
+{% elif synced == 'error' %}
+<section class="panel"><p class="notice error">Синхронизация завершилась с ошибкой. Смотрите статус аккаунта ниже.</p></section>
+{% endif %}
+{% if test == 'ok' %}
+<section class="panel"><p class="notice ok">Подключение к BILLmanager успешно.</p></section>
+{% elif test == 'error' %}
+<section class="panel"><p class="notice error">Не удалось подключиться к BILLmanager. Проверьте URL, логин и API-пароль.</p></section>
+{% endif %}
+
 <section class="panel">
   <div class="panel-head">
     <h2>Доступы и ссылки</h2>
@@ -30,12 +41,23 @@
         <div><dt>Синхронизация</dt><dd>{{ account.last_sync_at or "ещё не запускалась" }}</dd></div>
         {% endif %}
       </dl>
+      {% if account.is_synced and account.last_sync_message %}
+      <p class="sync-status {{ 'error' if account.last_sync_status == 'error' else 'ok' }}">{{ account.last_sync_message }}</p>
+      {% endif %}
       <div class="account-actions">
         {% if account.panel_url %}
         <a class="secondary-link" href="{{ account.panel_url }}" target="_blank" rel="noreferrer">Кабинет</a>
         {% endif %}
         {% if account.payment_url %}
         <a class="secondary-link" href="{{ account.payment_url }}" target="_blank" rel="noreferrer">Оплата</a>
+        {% endif %}
+        {% if account.is_synced %}
+        <form method="post" action="/accounts/{{ account.id }}/sync" class="inline-form">
+          <button class="icon-link" type="submit">Синхронизировать</button>
+        </form>
+        <form method="post" action="/accounts/{{ account.id }}/test-connection" class="inline-form">
+          <button class="icon-link ghost" type="submit">Проверить</button>
+        </form>
         {% endif %}
         <a class="icon-link ghost" href="/accounts/{{ account.id }}/edit">Правка</a>
       </div>

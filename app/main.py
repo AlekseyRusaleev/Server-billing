@@ -37,6 +37,8 @@ from app.repository import (
     update_server,
 )
 from app.reminders import send_backup, send_due_reminders, send_telegram
+from app.connectors import ConnectorError, build_connector
+from app.provider_sync import sync_account
 from app.provider_templates import list_provider_templates, provider_countries
 from app.system_update import start_system_update
 from app.telegram import build_telegram_share_url, detect_telegram_chats, telegram_bot_username
@@ -132,6 +134,7 @@ def form_payload(
     payment_url: str,
     panel_url: str,
     notes: str,
+    sync_locked: bool = False,
 ) -> dict[str, object]:
     normalized_currency = currency.strip().upper() or "RUB"
     if normalized_currency not in SUPPORTED_CURRENCIES:
@@ -152,6 +155,7 @@ def form_payload(
         "payment_url": payment_url.strip(),
         "panel_url": panel_url.strip(),
         "notes": notes.strip(),
+        "sync_locked": bool(sync_locked),
     }
 
 
@@ -285,6 +289,7 @@ def add_server(
     payment_url: str = Form(""),
     panel_url: str = Form(""),
     notes: str = Form(""),
+    sync_locked: bool = Form(False),
 ) -> RedirectResponse:
     create_server(
         form_payload(
@@ -303,6 +308,7 @@ def add_server(
             payment_url,
             panel_url,
             notes,
+            sync_locked,
         )
     )
     return RedirectResponse("/", status_code=303)
@@ -345,6 +351,7 @@ def save_server(
     payment_url: str = Form(""),
     panel_url: str = Form(""),
     notes: str = Form(""),
+    sync_locked: bool = Form(False),
 ) -> RedirectResponse:
     update_server(
         server_id,
@@ -364,6 +371,7 @@ def save_server(
             payment_url,
             panel_url,
             notes,
+            sync_locked,
         ),
     )
     return RedirectResponse("/", status_code=303)
@@ -390,6 +398,8 @@ def accounts_page(request: Request) -> HTMLResponse:
             "accounts": list_accounts(),
             "provider_templates": list_provider_templates(),
             "donation_url": DONATION_URL,
+            "synced": request.query_params.get("synced", ""),
+            "test": request.query_params.get("test", ""),
         },
     )
 
@@ -476,6 +486,31 @@ def save_account(
 def remove_account(account_id: int) -> RedirectResponse:
     delete_account(account_id)
     return RedirectResponse("/accounts", status_code=303)
+
+
+@app.post("/accounts/{account_id}/sync")
+def sync_account_route(account_id: int) -> RedirectResponse:
+    if get_account(account_id) is None:
+        raise HTTPException(status_code=404)
+    result = sync_account(account_id)
+    return RedirectResponse(
+        f"/accounts?synced={'ok' if result.ok else 'error'}", status_code=303
+    )
+
+
+@app.post("/accounts/{account_id}/test-connection")
+def test_account_connection(account_id: int) -> RedirectResponse:
+    account = get_account(account_id)
+    if account is None:
+        raise HTTPException(status_code=404)
+    connector = build_connector(account)
+    if connector is None:
+        return RedirectResponse("/accounts?test=manual", status_code=303)
+    try:
+        connector.test_connection()
+    except ConnectorError:
+        return RedirectResponse("/accounts?test=error", status_code=303)
+    return RedirectResponse("/accounts?test=ok", status_code=303)
 
 
 @app.get("/history", response_class=HTMLResponse)

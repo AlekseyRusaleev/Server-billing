@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from collections import defaultdict
 
 from app.config import settings
@@ -159,8 +159,8 @@ def create_server(data: dict[str, object]) -> int:
             INSERT INTO servers (
                 hosting_account_id, name, provider, ip_address, location, server_login,
                 server_password, service_id, amount, currency, billing_period_days,
-                next_payment_date, payment_url, panel_url, notes
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                next_payment_date, payment_url, panel_url, notes, sync_locked
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 data.get("hosting_account_id"),
@@ -178,6 +178,7 @@ def create_server(data: dict[str, object]) -> int:
                 data.get("payment_url", ""),
                 data.get("panel_url", ""),
                 data.get("notes", ""),
+                1 if data.get("sync_locked") else 0,
             ),
         )
         return int(cursor.lastrowid)
@@ -190,7 +191,8 @@ def update_server(server_id: int, data: dict[str, object]) -> None:
             UPDATE servers
             SET hosting_account_id = ?, name = ?, provider = ?, ip_address = ?, location = ?,
                 server_login = ?, server_password = ?, service_id = ?, amount = ?, currency = ?,
-                billing_period_days = ?, next_payment_date = ?, payment_url = ?, panel_url = ?, notes = ?
+                billing_period_days = ?, next_payment_date = ?, payment_url = ?, panel_url = ?, notes = ?,
+                sync_locked = ?
             WHERE id = ?
             """,
             (
@@ -209,6 +211,7 @@ def update_server(server_id: int, data: dict[str, object]) -> None:
                 data.get("payment_url", ""),
                 data.get("panel_url", ""),
                 data.get("notes", ""),
+                1 if data.get("sync_locked") else 0,
                 server_id,
             ),
         )
@@ -217,6 +220,65 @@ def update_server(server_id: int, data: dict[str, object]) -> None:
 def delete_server(server_id: int) -> None:
     with connect() as connection:
         connection.execute("DELETE FROM servers WHERE id = ?", (server_id,))
+
+
+SYNCABLE_SERVER_FIELDS = {
+    "name",
+    "ip_address",
+    "amount",
+    "currency",
+    "status",
+    "next_payment_date",
+    "payment_url",
+}
+
+
+def servers_for_account(account_id: int) -> list[Server]:
+    with connect() as connection:
+        rows = connection.execute(
+            f"{SERVER_SELECT} WHERE servers.hosting_account_id = ?", (account_id,)
+        ).fetchall()
+    return [server_from_row(row) for row in rows]
+
+
+def update_server_from_sync(server_id: int, fields: dict[str, object]) -> None:
+    """Точечно обновляет только разрешённые для синхронизации поля.
+
+    Никогда не трогает server_password, server_login и notes — ручные данные
+    остаются за пользователем.
+    """
+    updates = {key: value for key, value in fields.items() if key in SYNCABLE_SERVER_FIELDS}
+    if not updates:
+        return
+    columns = ", ".join(f"{key} = ?" for key in updates)
+    values = list(updates.values())
+    values.append(datetime.now().strftime("%Y-%m-%d %H:%M"))
+    values.append(server_id)
+    with connect() as connection:
+        connection.execute(
+            f"UPDATE servers SET {columns}, external_synced_at = ? WHERE id = ?",
+            values,
+        )
+
+
+def set_account_sync_result(account_id: int, status: str, message: str) -> None:
+    with connect() as connection:
+        connection.execute(
+            """
+            UPDATE hosting_accounts
+            SET last_sync_at = ?, last_sync_status = ?, last_sync_message = ?
+            WHERE id = ?
+            """,
+            (datetime.now().strftime("%Y-%m-%d %H:%M"), status, message[:500], account_id),
+        )
+
+
+def list_auto_sync_accounts() -> list[HostingAccount]:
+    return [
+        account
+        for account in list_accounts()
+        if account.integration_type != "manual" and account.auto_sync_enabled
+    ]
 
 
 def mark_paid(server_id: int, note: str = "") -> None:

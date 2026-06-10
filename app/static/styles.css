@@ -1225,3 +1225,37 @@ td strong {
     font-size: 11px;
   }
 }
+
+.inline-form {
+  display: inline-flex;
+  margin: 0;
+}
+
+.account-actions button.icon-link {
+  font: inherit;
+  background: white;
+  border: 1px solid var(--line);
+  color: var(--text);
+}
+
+.notice.ok {
+  border-color: #bfe6d4;
+  background: #ecf8f2;
+  color: var(--green);
+}
+
+.notice.error {
+  border-color: #f3c4c4;
+  background: #fdecec;
+  color: var(--red);
+}
+
+.sync-status {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.sync-status.error {
+  color: var(--red);
+}
