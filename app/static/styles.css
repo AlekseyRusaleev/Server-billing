@@ -700,6 +700,47 @@ dd {
   margin-top: 10px;
 }
 
+.version-box {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.version-box div {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.version-box span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.version-box strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 14px;
+}
+
+.version-box.success div:first-child {
+  border-color: #bce9d8;
+  background: #effaf6;
+}
+
+.version-box.running div:first-child {
+  border-color: #b8d3ff;
+  background: #f2f7ff;
+}
+
+.version-box.failed div:first-child {
+  border-color: #ffd0d0;
+  background: #fff2f2;
+}
+
 .stack-form {
   display: grid;
   gap: 12px;

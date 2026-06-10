@@ -122,8 +122,36 @@
   <aside class="panel">
     <div class="panel-head">
       <h2>Обновление</h2>
-      <span>{{ "готово" if update_enabled else "не настроено" }}</span>
+      <span>{{ version.current_version }}</span>
     </div>
+    <div class="version-box {{ version.status }}">
+      <div>
+        <span>Статус</span>
+        <strong>
+          {% if version.status == "success" %}успешно
+          {% elif version.status == "running" %}выполняется
+          {% elif version.status == "failed" %}ошибка
+          {% else %}нет данных{% endif %}
+        </strong>
+      </div>
+      <div>
+        <span>Текущая версия</span>
+        <strong>{{ version.current_version }}</strong>
+      </div>
+      {% if version.previous_version %}
+      <div>
+        <span>Предыдущая</span>
+        <strong>{{ version.previous_version }}</strong>
+      </div>
+      {% endif %}
+      {% if version.finished_at or version.started_at %}
+      <div>
+        <span>Время</span>
+        <strong>{{ version.finished_at or version.started_at }}</strong>
+      </div>
+      {% endif %}
+    </div>
+    <p class="muted">{{ version.message }}</p>
     <p class="muted">Кнопка подтянет свежую версию из репозитория и пересоберет Docker Compose на сервере.</p>
     <form method="post" action="/settings/update">
       <button class="secondary" type="submit" {% if not update_enabled %}disabled{% endif %}>Обновить сервис</button>

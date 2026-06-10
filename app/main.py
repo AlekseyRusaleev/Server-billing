@@ -38,6 +38,7 @@ from app.reminders import send_backup, send_due_reminders, send_telegram
 from app.provider_templates import list_provider_templates
 from app.system_update import start_system_update
 from app.telegram import build_telegram_share_url
+from app.version import current_version
 
 app = FastAPI(title=settings.app_name)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
@@ -422,6 +423,7 @@ def settings_page(request: Request, saved: str = "", tested: str = "") -> HTMLRe
             "rates": request.query_params.get("rates", ""),
             "updated": request.query_params.get("updated", ""),
             "update_enabled": bool(settings.app_update_url and settings.app_update_token),
+            "version": current_version(),
         },
     )
 

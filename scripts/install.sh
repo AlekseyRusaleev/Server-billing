@@ -41,6 +41,48 @@ prompt_secret() {
   echo "$value"
 }
 
+detect_telegram_chat_id() {
+  local bot_token="$1"
+  TELEGRAM_BOT_TOKEN_INPUT="$bot_token" python3 - <<'PY'
+import json
+import os
+import urllib.request
+
+token = os.environ.get("TELEGRAM_BOT_TOKEN_INPUT", "").strip()
+if not token:
+    raise SystemExit
+try:
+    with urllib.request.urlopen(f"https://api.telegram.org/bot{token}/getUpdates", timeout=15) as response:
+        payload = json.loads(response.read().decode("utf-8"))
+except Exception:
+    raise SystemExit
+updates = payload.get("result") or []
+for item in reversed(updates):
+    message = item.get("message") or item.get("channel_post") or {}
+    chat = message.get("chat") or {}
+    chat_id = chat.get("id")
+    if chat_id is not None:
+        print(chat_id)
+        break
+PY
+}
+
+write_initial_version() {
+  local version
+  mkdir -p "$INSTALL_DIR/data"
+  version="$(git -C "$INSTALL_DIR" rev-parse --short HEAD 2>/dev/null || echo unknown)"
+  cat > "$INSTALL_DIR/data/app_version.json" <<EOF
+{
+  "status": "success",
+  "current_version": "$version",
+  "previous_version": "",
+  "started_at": "",
+  "finished_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+  "message": "Сервис установлен."
+}
+EOF
+}
+
 install_packages() {
   if command -v apt-get >/dev/null 2>&1; then
     apt-get update
@@ -187,10 +229,21 @@ import base64, os
 print(base64.urlsafe_b64encode(os.urandom(32)).decode())
 PY
 )"
-  bot_token="$(prompt_secret 'Telegram bot token, leave empty to disable reminders')"
+  bot_token="$(prompt 'Telegram bot token, leave empty to disable reminders' '')"
   chat_id=""
   if [ -n "$bot_token" ]; then
+    echo "Telegram chat id is where the bot will send messages: your private chat, a group, or a channel." > "$TTY_PATH"
+    echo "Send any message to your bot first, then paste chat id. Leave empty to try auto-detect." > "$TTY_PATH"
     chat_id="$(prompt 'Telegram chat id' '')"
+    if [ -z "$chat_id" ]; then
+      echo "Trying to auto-detect chat id from bot updates..." > "$TTY_PATH"
+      chat_id="$(detect_telegram_chat_id "$bot_token" || true)"
+      if [ -n "$chat_id" ]; then
+        echo "Detected Telegram chat id: $chat_id" > "$TTY_PATH"
+      else
+        echo "Chat id was not detected. Telegram settings can be completed later in the web panel." > "$TTY_PATH"
+      fi
+    fi
   fi
 
   install_packages
@@ -204,6 +257,7 @@ PY
   fi
 
   write_env "$domain" "$email" "$admin_username" "$admin_password_hash" "$app_secret_key" "$app_encryption_key" "$bot_token" "$chat_id"
+  write_initial_version
 
   cd "$INSTALL_DIR"
   docker compose -f docker-compose.prod.yml up -d --build
