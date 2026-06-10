@@ -2,7 +2,7 @@ FROM docker:27-cli
 
 RUN apk add --no-cache docker-cli-compose git python3
 
-WORKDIR /repo
+WORKDIR /opt/server-billing
 
 COPY scripts/update_server.py /usr/local/bin/update_server.py
 
