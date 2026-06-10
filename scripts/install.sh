@@ -58,14 +58,16 @@ write_env() {
   local email="$2"
   local bot_token="$3"
   local chat_id="$4"
-  local base_url site_address
+  local base_url site_address server_ip
+
+  server_ip="$(curl -fsS --max-time 5 https://api.ipify.org || hostname -I | awk '{print $1}')"
 
   if [ -n "$domain" ]; then
     site_address="$domain"
     base_url="https://$domain"
   else
-    site_address=":80"
-    base_url="http://$(curl -fsS --max-time 5 https://api.ipify.org || hostname -I | awk '{print $1}')"
+    site_address="$server_ip.sslip.io"
+    base_url="https://$site_address"
   fi
 
   umask 077
@@ -73,6 +75,7 @@ write_env() {
 APP_NAME=Server Billing Manager
 DATABASE_PATH=/app/data/server_billing.db
 BASE_URL=$base_url
+SERVER_IP=$server_ip
 CADDY_SITE_ADDRESS=$site_address
 CADDY_EMAIL=$email
 TELEGRAM_BOT_TOKEN=$bot_token
@@ -86,7 +89,7 @@ main() {
   echo "Server Billing Manager installer"
   echo
   local domain email bot_token chat_id
-  domain="$(prompt 'Domain for HTTPS, leave empty to serve by server IP' '')"
+  domain="$(prompt 'Domain for HTTPS, leave empty to use automatic IP.sslip.io HTTPS' '')"
   email=""
   if [ -n "$domain" ]; then
     email="$(prompt 'Email for Lets Encrypt notifications' '')"

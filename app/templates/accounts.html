@@ -13,7 +13,7 @@
     <h2>Доступы и ссылки</h2>
     <span>{{ accounts|length }} аккаунтов</span>
   </div>
-  <p class="notice">Сейчас секреты хранятся локально в SQLite как часть MVP. Перед продажей сервиса этот слой нужно перевести на шифрование.</p>
+  <p class="notice">Сейчас секреты хранятся локально в SQLite. Перед публичным использованием этот слой нужно перевести на шифрование.</p>
   <div class="account-grid">
     {% for account in accounts %}
     <article class="account-card">

@@ -32,7 +32,23 @@ curl -fsSL https://raw.githubusercontent.com/AlekseyRusaleev/Server-billing/main
 - Telegram bot token, если нужны уведомления;
 - Telegram chat id, если указан токен.
 
-Если домен не указан, сервис будет доступен по IP сервера на порту `80`.
+Если домен не указан, установщик автоматически создаст HTTPS-адрес через `sslip.io`:
+
+```text
+https://YOUR_SERVER_IP.sslip.io
+```
+
+Обычный адрес `http://YOUR_SERVER_IP` будет редиректить на защищенную HTTPS-ссылку.
+
+## HTTPS Без Домена
+
+Свой домен не обязателен. По умолчанию используется публичный DNS-алиас `sslip.io`, который указывает на IP сервера:
+
+```text
+192.0.2.10.sslip.io -> 192.0.2.10
+```
+
+Caddy автоматически выпускает сертификат Let's Encrypt для этого имени.
 
 ## Установка с доменом
 
@@ -94,8 +110,9 @@ docker compose -f docker-compose.prod.yml up -d --build
 ```env
 APP_NAME=Server Billing Manager
 DATABASE_PATH=/app/data/server_billing.db
-BASE_URL=http://YOUR_SERVER_IP
-CADDY_SITE_ADDRESS=:80
+BASE_URL=https://YOUR_SERVER_IP.sslip.io
+SERVER_IP=YOUR_SERVER_IP
+CADDY_SITE_ADDRESS=YOUR_SERVER_IP.sslip.io
 CADDY_EMAIL=
 TELEGRAM_BOT_TOKEN=
 TELEGRAM_CHAT_ID=

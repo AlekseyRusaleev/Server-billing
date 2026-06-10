@@ -1,3 +1,7 @@
+http://{$SERVER_IP} {
+    redir https://{$CADDY_SITE_ADDRESS}{uri} permanent
+}
+
 {$CADDY_SITE_ADDRESS} {
     encode zstd gzip
     reverse_proxy app:8000
