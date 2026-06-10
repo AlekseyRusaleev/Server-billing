@@ -134,11 +134,21 @@ def form_payload(
         "amount": amount,
         "currency": normalized_currency,
         "billing_period_days": billing_period_days,
-        "next_payment_date": next_payment_date,
+        "next_payment_date": parse_payment_date(next_payment_date),
         "payment_url": payment_url.strip(),
         "panel_url": panel_url.strip(),
         "notes": notes.strip(),
     }
+
+
+def parse_payment_date(value: str) -> str:
+    cleaned = value.strip()
+    for date_format in ("%d.%m.%Y", "%d-%m-%Y", "%d/%m/%Y", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(cleaned, date_format).date().isoformat()
+        except ValueError:
+            continue
+    raise HTTPException(status_code=400, detail="Дата должна быть в формате дд.мм.гггг")
 
 
 def account_payload(

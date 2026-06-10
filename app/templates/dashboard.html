@@ -55,20 +55,19 @@
 <section class="filter-bar">
   <form method="get" action="/">
     <input name="q" value="{{ filters.q }}" placeholder="Поиск по серверу, IP, аккаунту">
-    <select name="provider">
+    <select name="provider" onchange="this.form.submit()">
       <option value="">Все провайдеры</option>
       {% for item in providers %}
       <option value="{{ item }}" {% if filters.provider == item %}selected{% endif %}>{{ item }}</option>
       {% endfor %}
     </select>
-    <select name="state">
+    <select name="state" onchange="this.form.submit()">
       <option value="">Все статусы</option>
       <option value="ok" {% if filters.state == "ok" %}selected{% endif %}>В порядке</option>
       <option value="soon" {% if filters.state == "soon" %}selected{% endif %}>Скоро</option>
       <option value="urgent" {% if filters.state == "urgent" %}selected{% endif %}>Срочно</option>
       <option value="overdue" {% if filters.state == "overdue" %}selected{% endif %}>Просрочено</option>
     </select>
-    <button class="secondary" type="submit">Фильтр</button>
     <a class="secondary-link" href="/">Сброс</a>
   </form>
 </section>

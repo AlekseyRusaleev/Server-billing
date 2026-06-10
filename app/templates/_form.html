@@ -54,7 +54,15 @@
   </label>
   <label>
     Следующая оплата
-    <input type="date" name="next_payment_date" value="{{ server.next_payment_date.isoformat() if server else '' }}" required>
+    <input
+      type="text"
+      name="next_payment_date"
+      value="{{ server.next_payment_date.strftime('%d.%m.%Y') if server else '' }}"
+      placeholder="дд.мм.гггг"
+      inputmode="numeric"
+      pattern="\d{2}[\.\-/]\d{2}[\.\-/]\d{4}"
+      required
+    >
   </label>
   <label class="wide">
     Ссылка на оплату

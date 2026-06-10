@@ -298,7 +298,7 @@ h2 {
 
 .filter-bar form {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) 190px 170px auto auto;
+  grid-template-columns: minmax(220px, 1fr) 190px 170px auto;
   gap: 10px;
 }
 
