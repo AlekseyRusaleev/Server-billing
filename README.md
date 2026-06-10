@@ -32,13 +32,19 @@ Self-hosted панель для учета серверов, сроков опл
 
 ## Установка одной командой
 
-На чистом Linux-сервере выполните:
+На чистом Linux-сервере под `root` выполните:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/AlekseyRusaleev/Server-billing/main/scripts/install.sh | bash
+```
+
+Если вход выполнен не под `root`, используйте:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/AlekseyRusaleev/Server-billing/main/scripts/install.sh | sudo bash
 ```
 
-Команда рассчитана на запуск из обычной SSH-консоли: установщик интерактивно спрашивает пароль администратора, Telegram token и другие значения через терминал.
+Команда рассчитана на запуск из обычной SSH-консоли личного сервера: установщик интерактивно спрашивает пароль администратора, Telegram token и другие значения через терминал.
 
 Установщик спросит:
 
