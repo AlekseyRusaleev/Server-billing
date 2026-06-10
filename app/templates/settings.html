@@ -42,25 +42,81 @@
 {% elif updated == "0" %}
 <div class="notice">Не удалось запустить обновление. Проверьте updater service и токен.</div>
 {% endif %}
+{% if bot == "1" %}
+<div class="notice success">Telegram bot подключен.</div>
+{% elif bot == "0" %}
+<div class="notice">Не удалось проверить bot token. Проверьте токен от @BotFather.</div>
+{% endif %}
+{% if chat == "1" %}
+<div class="notice success">Telegram chat сохранен.</div>
+{% elif chat == "0" %}
+<div class="notice">Не удалось найти Telegram chat. Напишите любое сообщение боту и попробуйте снова.</div>
+{% elif chat == "need-bot" %}
+<div class="notice">Сначала подключите Telegram bot.</div>
+{% endif %}
+
+<section class="panel setup-wizard" id="telegram-setup">
+  <div class="panel-head">
+    <h2>Мастер настройки</h2>
+    <span>{{ "Telegram готов" if token_configured and chat_configured else "нужно завершить" }}</span>
+  </div>
+  <div class="setup-steps">
+    <article class="setup-step {{ 'done' if token_configured else '' }}">
+      <span>1</span>
+      <div>
+        <h3>Добавить Telegram bot</h3>
+        <p class="muted">Вставьте token от @BotFather. Он проверится через Telegram API и сохранится только на вашем сервере.</p>
+        <form method="post" action="/settings/telegram/bot">
+          <input name="telegram_bot_token" placeholder="{{ 'подключен ' ~ notification.telegram_bot_username if token_configured else '123456:ABC...' }}" autocomplete="off">
+          <button class="secondary" type="submit">Проверить и сохранить</button>
+        </form>
+      </div>
+    </article>
+    <article class="setup-step {{ 'done' if chat_configured else '' }}">
+      <span>2</span>
+      <div>
+        <h3>Добавить Telegram chat</h3>
+        <p class="muted">Chat ID нужен как адрес доставки. Напишите любое сообщение боту, затем нажмите поиск или вставьте chat id вручную.</p>
+        <div class="split-actions">
+          <form method="post" action="/settings/telegram/chat/detect">
+            <button class="secondary" type="submit" {% if not token_configured %}disabled{% endif %}>Найти chat id</button>
+          </form>
+          <form method="post" action="/settings/telegram/chat">
+            <input name="telegram_chat_id" value="{{ notification.telegram_chat_id }}" placeholder="647793683">
+            <button class="secondary" type="submit">Сохранить chat</button>
+          </form>
+        </div>
+        {% if notification.telegram_chat_title %}
+        <small class="muted">Текущий чат: {{ notification.telegram_chat_title }}</small>
+        {% endif %}
+      </div>
+    </article>
+    <article class="setup-step {{ 'done' if token_configured and chat_configured else '' }}" id="telegram-check">
+      <span>3</span>
+      <div>
+        <h3>Проверить уведомления</h3>
+        <p class="muted">Отправьте тестовое сообщение и убедитесь, что бот пишет в нужный чат.</p>
+        <form method="post" action="/settings/telegram/test">
+          <button class="secondary" type="submit" {% if not token_configured or not chat_configured %}disabled{% endif %}>Отправить тест</button>
+        </form>
+        {% if notification.telegram_tested_at %}
+        <small class="muted">Последний успешный тест: {{ notification.telegram_tested_at }}</small>
+        {% endif %}
+      </div>
+    </article>
+  </div>
+</section>
 
 <section class="settings-grid">
   <form class="panel" method="post" action="/settings">
     <div class="panel-head">
-      <h2>Уведомления</h2>
-      <span>Telegram</span>
+      <h2>Расписание</h2>
+      <span>уведомления</span>
     </div>
     <div class="form-grid">
       <label class="wide">
         Base URL
         <input name="base_url" value="{{ notification.base_url }}" placeholder="https://example.com">
-      </label>
-      <label class="wide">
-        Bot token
-        <input type="password" name="telegram_bot_token" placeholder="{{ 'токен задан, оставь пустым чтобы не менять' if token_configured else 'вставь токен бота' }}">
-      </label>
-      <label>
-        Chat ID
-        <input name="telegram_chat_id" value="{{ notification.telegram_chat_id }}" placeholder="647793683">
       </label>
       <label>
         Дни напоминаний
@@ -97,10 +153,7 @@
       <h2>Проверка</h2>
       <span>{{ "токен задан" if token_configured else "токен не задан" }}</span>
     </div>
-    <p class="muted">Тест отправит короткое сообщение в текущий Telegram chat id.</p>
-    <form method="post" action="/settings/telegram/test">
-      <button class="secondary" type="submit">Отправить тест</button>
-    </form>
+    <p class="muted">Backup и ручная проверка используют подключенный Telegram chat.</p>
     <form method="post" action="/settings/telegram/backup">
       <button class="secondary" type="submit">Отправить backup</button>
     </form>

@@ -41,32 +41,6 @@ prompt_secret() {
   echo "$value"
 }
 
-detect_telegram_chat_id() {
-  local bot_token="$1"
-  TELEGRAM_BOT_TOKEN_INPUT="$bot_token" python3 - <<'PY'
-import json
-import os
-import urllib.request
-
-token = os.environ.get("TELEGRAM_BOT_TOKEN_INPUT", "").strip()
-if not token:
-    raise SystemExit
-try:
-    with urllib.request.urlopen(f"https://api.telegram.org/bot{token}/getUpdates", timeout=15) as response:
-        payload = json.loads(response.read().decode("utf-8"))
-except Exception:
-    raise SystemExit
-updates = payload.get("result") or []
-for item in reversed(updates):
-    message = item.get("message") or item.get("channel_post") or {}
-    chat = message.get("chat") or {}
-    chat_id = chat.get("id")
-    if chat_id is not None:
-        print(chat_id)
-        break
-PY
-}
-
 write_initial_version() {
   local version
   mkdir -p "$INSTALL_DIR/data"
@@ -191,7 +165,7 @@ EOF
 main() {
   echo "Server Billing Manager installer"
   echo
-  local domain email admin_username admin_password admin_password_repeat admin_password_hash app_secret_key app_encryption_key bot_token chat_id
+  local domain email admin_username admin_password admin_password_repeat admin_password_hash app_secret_key app_encryption_key
   domain="$(prompt 'Domain for HTTPS, leave empty to use automatic IP.sslip.io HTTPS' '')"
   email=""
   if [ -n "$domain" ]; then
@@ -229,22 +203,6 @@ import base64, os
 print(base64.urlsafe_b64encode(os.urandom(32)).decode())
 PY
 )"
-  bot_token="$(prompt 'Telegram bot token, leave empty to disable reminders' '')"
-  chat_id=""
-  if [ -n "$bot_token" ]; then
-    echo "Telegram chat id is where the bot will send messages: your private chat, a group, or a channel." > "$TTY_PATH"
-    echo "Send any message to your bot first, then paste chat id. Leave empty to try auto-detect." > "$TTY_PATH"
-    chat_id="$(prompt 'Telegram chat id' '')"
-    if [ -z "$chat_id" ]; then
-      echo "Trying to auto-detect chat id from bot updates..." > "$TTY_PATH"
-      chat_id="$(detect_telegram_chat_id "$bot_token" || true)"
-      if [ -n "$chat_id" ]; then
-        echo "Detected Telegram chat id: $chat_id" > "$TTY_PATH"
-      else
-        echo "Chat id was not detected. Telegram settings can be completed later in the web panel." > "$TTY_PATH"
-      fi
-    fi
-  fi
 
   install_packages
   install_docker
@@ -256,7 +214,7 @@ PY
     git clone "$REPO_URL" "$INSTALL_DIR"
   fi
 
-  write_env "$domain" "$email" "$admin_username" "$admin_password_hash" "$app_secret_key" "$app_encryption_key" "$bot_token" "$chat_id"
+  write_env "$domain" "$email" "$admin_username" "$admin_password_hash" "$app_secret_key" "$app_encryption_key" "" ""
   write_initial_version
 
   cd "$INSTALL_DIR"
@@ -267,6 +225,7 @@ PY
   echo "Open: $(grep '^BASE_URL=' .env | cut -d= -f2-)"
   echo "Login: $admin_username"
   echo "Project directory: $INSTALL_DIR"
+  echo "Configure Telegram notifications in the web panel: Settings -> Setup wizard"
   echo "Update later from the web panel or with: cd $INSTALL_DIR && git pull && docker compose -f docker-compose.prod.yml up -d --build"
 }
 

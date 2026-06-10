@@ -692,6 +692,62 @@ dd {
   align-items: start;
 }
 
+.setup-wizard {
+  margin-bottom: 18px;
+}
+
+.setup-steps {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.setup-step {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.setup-step > span {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 999px;
+  background: #f2f5f9;
+  color: var(--muted);
+  font-weight: 900;
+}
+
+.setup-step.done > span {
+  background: #e8f6f1;
+  color: var(--green);
+}
+
+.setup-step h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.setup-step p {
+  margin: 6px 0 10px;
+}
+
+.setup-step form,
+.split-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.setup-step input {
+  min-width: min(360px, 100%);
+  flex: 1;
+}
+
 .settings-grid .panel:first-child {
   grid-row: span 3;
 }
@@ -868,6 +924,15 @@ dd {
 
   .form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .setup-step {
+    grid-template-columns: 1fr;
+  }
+
+  .setup-step form,
+  .split-actions {
+    flex-direction: column;
   }
 
   .actions {

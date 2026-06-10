@@ -385,20 +385,24 @@ def notification_settings() -> dict[str, str]:
         "currency_rates_updated_at": get_effective_setting(
             "currency_rates_updated_at", settings.currency_rates_updated_at
         ),
+        "telegram_bot_username": get_effective_setting("telegram_bot_username", ""),
+        "telegram_chat_title": get_effective_setting("telegram_chat_title", ""),
+        "telegram_tested_at": get_effective_setting("telegram_tested_at", ""),
     }
 
 
 def save_notification_settings(
-    telegram_bot_token: str,
-    telegram_chat_id: str,
+    telegram_bot_token: str | None,
+    telegram_chat_id: str | None,
     reminder_days: str,
     check_interval_seconds: int,
     base_url: str,
     backup_interval_days: int,
 ) -> None:
-    if telegram_bot_token.strip():
+    if telegram_bot_token is not None and telegram_bot_token.strip():
         set_app_setting("telegram_bot_token", telegram_bot_token.strip())
-    set_app_setting("telegram_chat_id", telegram_chat_id.strip())
+    if telegram_chat_id is not None:
+        set_app_setting("telegram_chat_id", telegram_chat_id.strip())
     set_app_setting("reminder_days", reminder_days.strip() or "7,3,1,0,-1")
     set_app_setting("check_interval_seconds", str(check_interval_seconds))
     set_app_setting("base_url", base_url.strip() or settings.base_url)

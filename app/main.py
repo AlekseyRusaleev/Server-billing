@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timezone
 
 from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -37,7 +37,7 @@ from app.repository import (
 from app.reminders import send_backup, send_due_reminders, send_telegram
 from app.provider_templates import list_provider_templates
 from app.system_update import start_system_update
-from app.telegram import build_telegram_share_url
+from app.telegram import build_telegram_share_url, detect_telegram_chats, telegram_bot_username
 from app.version import current_version
 
 app = FastAPI(title=settings.app_name)
@@ -176,8 +176,12 @@ def dashboard(
     overdue = [server for server in all_servers if server.days_left < 0]
     providers = sorted({server.provider for server in all_servers})
     current_notifications = notification_settings()
+    bot_ready = bool(current_notifications.get("telegram_bot_token"))
+    chat_ready = bool(current_notifications.get("telegram_chat_id"))
     onboarding = [
-        {"label": "Создать аккаунт хостинга", "done": bool(accounts), "href": "/accounts"},
+        {"label": "Добавить Telegram bot", "done": bot_ready, "href": "/settings#telegram-setup"},
+        {"label": "Добавить Telegram chat", "done": chat_ready, "href": "/settings#telegram-setup"},
+        {"label": "Добавить аккаунт провайдера", "done": bool(accounts), "href": "/accounts"},
         {
             "label": "Добавить первый сервер",
             "done": bool(all_servers),
@@ -185,12 +189,10 @@ def dashboard(
             "action": "open-server-modal",
         },
         {
-            "label": "Настроить Telegram",
-            "done": bool(current_notifications.get("telegram_bot_token") and current_notifications.get("telegram_chat_id")),
-            "href": "/settings",
+            "label": "Отправить тест",
+            "done": bool(current_notifications.get("telegram_tested_at")),
+            "href": "/settings#telegram-check",
         },
-        {"label": "Проверить backup", "done": bool(current_notifications.get("backup_interval_days")), "href": "/settings"},
-        {"label": "Проверить адрес сервиса", "done": bool(current_notifications.get("base_url")), "href": "/domain"},
     ]
     return templates.TemplateResponse(
         "dashboard.html",
@@ -416,8 +418,11 @@ def settings_page(request: Request, saved: str = "", tested: str = "") -> HTMLRe
                 "updated_at": current.get("currency_rates_updated_at", ""),
             },
             "token_configured": bool(current.get("telegram_bot_token")),
+            "chat_configured": bool(current.get("telegram_chat_id")),
             "saved": saved,
             "tested": tested,
+            "bot": request.query_params.get("bot", ""),
+            "chat": request.query_params.get("chat", ""),
             "backup_sent": request.query_params.get("backup_sent", ""),
             "checked": request.query_params.get("checked", ""),
             "rates": request.query_params.get("rates", ""),
@@ -430,8 +435,6 @@ def settings_page(request: Request, saved: str = "", tested: str = "") -> HTMLRe
 
 @app.post("/settings")
 def save_settings(
-    telegram_bot_token: str = Form(""),
-    telegram_chat_id: str = Form(""),
     reminder_days: str = Form("7,3,1,0,-1"),
     check_interval_seconds: int = Form(86400),
     base_url: str = Form(""),
@@ -440,8 +443,8 @@ def save_settings(
     currency_rates: str = Form("RUB:1"),
 ) -> RedirectResponse:
     save_notification_settings(
-        telegram_bot_token=telegram_bot_token,
-        telegram_chat_id=telegram_chat_id,
+        telegram_bot_token=None,
+        telegram_chat_id=None,
         reminder_days=reminder_days,
         check_interval_seconds=check_interval_seconds,
         base_url=base_url,
@@ -449,6 +452,47 @@ def save_settings(
     )
     save_currency_settings(currency_base, currency_rates)
     return RedirectResponse("/settings?saved=1", status_code=303)
+
+
+@app.post("/settings/telegram/bot")
+def save_telegram_bot(telegram_bot_token: str = Form("")) -> RedirectResponse:
+    token = telegram_bot_token.strip()
+    if not token:
+        return RedirectResponse("/settings?bot=0#telegram-setup", status_code=303)
+    try:
+        username = telegram_bot_username(token)
+    except Exception:
+        return RedirectResponse("/settings?bot=0#telegram-setup", status_code=303)
+    set_app_setting("telegram_bot_token", token)
+    set_app_setting("telegram_bot_username", username)
+    return RedirectResponse("/settings?bot=1#telegram-setup", status_code=303)
+
+
+@app.post("/settings/telegram/chat")
+def save_telegram_chat(telegram_chat_id: str = Form("")) -> RedirectResponse:
+    chat_id = telegram_chat_id.strip()
+    if not chat_id:
+        return RedirectResponse("/settings?chat=0#telegram-setup", status_code=303)
+    set_app_setting("telegram_chat_id", chat_id)
+    set_app_setting("telegram_chat_title", "вручную")
+    return RedirectResponse("/settings?chat=1#telegram-setup", status_code=303)
+
+
+@app.post("/settings/telegram/chat/detect")
+def detect_telegram_chat() -> RedirectResponse:
+    token = notification_settings().get("telegram_bot_token", "").strip()
+    if not token:
+        return RedirectResponse("/settings?chat=need-bot#telegram-setup", status_code=303)
+    try:
+        chats = detect_telegram_chats(token)
+    except Exception:
+        chats = []
+    if not chats:
+        return RedirectResponse("/settings?chat=0#telegram-setup", status_code=303)
+    chat = chats[-1]
+    set_app_setting("telegram_chat_id", chat["id"])
+    set_app_setting("telegram_chat_title", f"{chat['title']} ({chat['type']})")
+    return RedirectResponse("/settings?chat=1#telegram-setup", status_code=303)
 
 
 @app.post("/settings/currency/refresh")
@@ -465,6 +509,8 @@ def refresh_rates() -> RedirectResponse:
 def test_telegram() -> RedirectResponse:
     try:
         sent = send_telegram("Server Billing Manager: тестовое уведомление отправлено.")
+        if sent:
+            set_app_setting("telegram_tested_at", datetime.now(timezone.utc).isoformat())
     except Exception:
         sent = False
     return RedirectResponse(f"/settings?tested={'1' if sent else '0'}", status_code=303)
