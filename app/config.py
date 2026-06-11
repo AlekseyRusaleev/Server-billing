@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     currency_rates_updated_at: str = ""
     app_update_url: str = ""
     app_update_token: str = ""
+    provider_catalog_url: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

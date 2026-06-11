@@ -4,9 +4,15 @@ import json
 from functools import lru_cache
 from pathlib import Path
 
+from app.config import settings
 
-TEMPLATES_PATH = Path(__file__).with_name("provider_templates.json")
-CATALOG_PATH = Path(__file__).with_name("provider_catalog.json")
+
+APP_DIR = Path(__file__).resolve().parent
+TEMPLATES_PATH = APP_DIR / "provider_templates.json"
+CATALOG_PATH = APP_DIR / "provider_catalog.json"
+PLANS_PATH = APP_DIR / "provider_plans.json"
+CACHE_DIR = Path(settings.database_path).resolve().parent / "catalog_cache"
+BUNDLE_CACHE = CACHE_DIR / "provider_bundle.json"
 
 COUNTRY_LABELS = {
     "RU": {"name": "Россия", "flag": "🇷🇺"},
@@ -59,44 +65,6 @@ COUNTRIES_BY_DOMAIN = {
     "4vps.su": ["RU", "NL", "DE", "US", "FI", "FR"],
 }
 
-PRICE_HINT_BY_DOMAIN = {
-    "hetzner.com": "от €4.15/мес",
-    "digitalocean.com": "от $4/мес",
-    "vultr.com": "от $2.50/мес",
-    "linode.com": "от $5/мес",
-    "ovhcloud.com": "тариф на сайте",
-    "scaleway.com": "тариф на сайте",
-    "contabo.com": "тариф на сайте",
-    "timeweb.cloud": "тариф на сайте",
-    "selectel.ru": "тариф на сайте",
-    "reg.ru": "тариф на сайте",
-    "beget.com": "тариф на сайте",
-    "firstvds.ru": "тариф на сайте",
-    "vdsina.ru": "тариф на сайте",
-    "aeza.net": "тариф на сайте",
-    "fornex.com": "тариф на сайте",
-    "onlinevds.ru": "от ~500 ₽/мес",
-    "hostoff.net": "тариф на сайте",
-    "rdp-onedash.ru": "тариф на сайте",
-    "ruvds.com": "от ~200 ₽/мес",
-    "adminvps.ru": "тариф на сайте",
-    "zomro.com": "тариф на сайте",
-    "serverspace.ru": "тариф на сайте",
-    "mchost.ru": "тариф на сайте",
-    "sprinthost.ru": "тариф на сайте",
-    "eurohoster.org": "тариф на сайте",
-    "ispserver.com": "тариф на сайте",
-    "ionos.com": "от €4/мес",
-    "hostinger.com": "от $4/мес",
-    "aws.amazon.com": "от $3.50/мес",
-    "cloud.google.com": "по факту использования",
-    "kamatera.com": "от $4/мес",
-    "upcloud.com": "от $5/мес",
-    "cherryservers.com": "тариф на сайте",
-    "leaseweb.com": "тариф на сайте",
-    "4vps.su": "от ~90 ₽/мес",
-}
-
 API_DOCS_BY_DOMAIN = {
     "hetzner.com": "https://docs.hetzner.cloud/",
     "digitalocean.com": "https://docs.digitalocean.com/reference/api/",
@@ -111,64 +79,96 @@ API_DOCS_BY_DOMAIN = {
     "4vps.su": "https://4vps.su/page/api",
 }
 
-PLANS_BY_DOMAIN: dict[str, list[dict[str, object]]] = {
-    "hetzner.com": [
-        {"name": "CX22", "price": 4.15, "currency": "EUR", "cpu": 2, "ram_gb": 4, "storage_gb": 40},
-        {"name": "CX32", "price": 6.8, "currency": "EUR", "cpu": 4, "ram_gb": 8, "storage_gb": 80},
-        {"name": "CX42", "price": 12.8, "currency": "EUR", "cpu": 8, "ram_gb": 16, "storage_gb": 160},
-    ],
-    "digitalocean.com": [
-        {"name": "Basic 1 GB", "price": 4.0, "currency": "USD", "cpu": 1, "ram_gb": 1, "storage_gb": 25},
-        {"name": "Basic 2 GB", "price": 6.0, "currency": "USD", "cpu": 1, "ram_gb": 2, "storage_gb": 50},
-        {"name": "Basic 4 GB", "price": 12.0, "currency": "USD", "cpu": 2, "ram_gb": 4, "storage_gb": 80},
-    ],
-    "vultr.com": [
-        {"name": "Cloud Compute", "price": 2.5, "currency": "USD", "cpu": 1, "ram_gb": 0.5, "storage_gb": 10},
-        {"name": "Cloud Compute", "price": 5.0, "currency": "USD", "cpu": 1, "ram_gb": 1, "storage_gb": 25},
-        {"name": "Cloud Compute", "price": 10.0, "currency": "USD", "cpu": 2, "ram_gb": 2, "storage_gb": 55},
-    ],
-    "aeza.net": [
-        {"name": "SWE-PROMO", "price_label": "от €3.6/мес", "cpu": 1, "ram_gb": 2, "storage_gb": 30},
-        {"name": "SWE-BASE", "price_label": "от €5/мес", "cpu": 2, "ram_gb": 4, "storage_gb": 60},
-    ],
-    "timeweb.cloud": [
-        {"name": "Cloud-15", "price_label": "от ~450 ₽/мес", "cpu": 1, "ram_gb": 1, "storage_gb": 15},
-        {"name": "Cloud-30", "price_label": "от ~700 ₽/мес", "cpu": 2, "ram_gb": 2, "storage_gb": 30},
-    ],
-    "ruvds.com": [
-        {"name": "Start", "price_label": "от ~200 ₽/мес", "cpu": 1, "ram_gb": 0.5, "storage_gb": 10},
-        {"name": "Standart", "price_label": "от ~400 ₽/мес", "cpu": 1, "ram_gb": 1, "storage_gb": 20},
-    ],
-    "4vps.su": [
-        {"name": "VPS Start", "price_label": "от ~90 ₽/мес", "cpu": 1, "ram_gb": 1, "storage_gb": 10},
-        {"name": "VPS Pro", "price_label": "от ~300 ₽/мес", "cpu": 2, "ram_gb": 2, "storage_gb": 30},
-        {"name": "Dedicated", "price_label": "от 1500 ₽/мес", "cpu": 4, "ram_gb": 8, "storage_gb": 120},
-    ],
-    "onlinevds.ru": [
-        {"name": "VDS Start", "price_label": "от ~500 ₽/мес", "cpu": 1, "ram_gb": 1, "storage_gb": 20},
-        {"name": "VDS Pro", "price_label": "тариф на сайте", "cpu": 2, "ram_gb": 2, "storage_gb": 40},
-    ],
-}
+CURRENCY_SYMBOL = {"RUB": "₽", "USD": "$", "EUR": "€"}
 
 
-def _normalize_plans(provider: dict[str, object]) -> list[dict[str, object]]:
+def _load_json(path: Path) -> object:
+    with path.open(encoding="utf-8-sig") as file:
+        return json.load(file)
+
+
+def _bundle_payload() -> dict[str, object] | None:
+    if not BUNDLE_CACHE.exists():
+        return None
+    payload = _load_json(BUNDLE_CACHE)
+    return payload if isinstance(payload, dict) else None
+
+
+@lru_cache(maxsize=1)
+def load_plans_by_domain() -> dict[str, list[dict[str, object]]]:
+    bundle = _bundle_payload()
+    if bundle and bundle.get("plans_by_domain"):
+        raw = bundle["plans_by_domain"]
+        if isinstance(raw, dict):
+            return {str(key): list(value) for key, value in raw.items()}
+    payload = _load_json(PLANS_PATH)
+    if isinstance(payload, dict) and payload.get("plans_by_domain"):
+        raw = payload["plans_by_domain"]
+        if isinstance(raw, dict):
+            return {str(key): list(value) for key, value in raw.items()}
+    return {}
+
+
+def _plan_price_value(plan: dict[str, object]) -> float | None:
+    price = plan.get("price")
+    if price is None:
+        return None
+    try:
+        return float(price)
+    except (TypeError, ValueError):
+        return None
+
+
+def _format_price_hint(plan: dict[str, object]) -> str:
+    if plan.get("price_label"):
+        return str(plan["price_label"])
+    price = _plan_price_value(plan)
+    currency = str(plan.get("currency") or "")
+    if price is None:
+        return "тариф на сайте"
+    symbol = CURRENCY_SYMBOL.get(currency, currency)
+    if currency == "RUB":
+        return f"от ~{int(price)} {symbol}/мес"
+    return f"от {symbol}{price:g}/мес"
+
+
+def _normalize_plans(provider: dict[str, object], plans_by_domain: dict[str, list[dict[str, object]]]) -> list[dict[str, object]]:
     domain = str(provider.get("domain", ""))
-    plans = provider.get("plans") or PLANS_BY_DOMAIN.get(domain) or []
+    plans = provider.get("plans") or plans_by_domain.get(domain) or []
     if plans:
         return list(plans)
-    hint = str(provider.get("price_hint") or PRICE_HINT_BY_DOMAIN.get(domain, "тариф на сайте"))
-    return [{"name": "Старт", "price_label": hint}]
+    return [{"name": "Старт", "price_label": "уточняйте на сайте"}]
 
 
-def _enrich_provider(provider: dict[str, object]) -> dict[str, object]:
+def _summarize_plans(plans: list[dict[str, object]]) -> dict[str, object]:
+    priced = [plan for plan in plans if _plan_price_value(plan) is not None]
+    cheapest = min(priced, key=_plan_price_value) if priced else (plans[0] if plans else {})
+    ram_values = [float(plan["ram_gb"]) for plan in plans if plan.get("ram_gb") is not None]
+    cpu_values = [float(plan["cpu"]) for plan in plans if plan.get("cpu") is not None]
+    currencies = sorted({str(plan.get("currency")) for plan in plans if plan.get("currency")})
+    return {
+        "min_price": _plan_price_value(cheapest) if cheapest else None,
+        "min_price_currency": str(cheapest.get("currency") or ""),
+        "min_price_label": _format_price_hint(cheapest) if cheapest else "тариф на сайте",
+        "min_ram_gb": min(ram_values) if ram_values else 0,
+        "max_ram_gb": max(ram_values) if ram_values else 0,
+        "min_cpu": min(cpu_values) if cpu_values else 0,
+        "plan_currencies": currencies,
+    }
+
+
+def _enrich_provider(provider: dict[str, object], plans_by_domain: dict[str, list[dict[str, object]]]) -> dict[str, object]:
     domain = str(provider.get("domain", ""))
     countries = COUNTRIES_BY_DOMAIN.get(domain, [])
     provider["countries"] = countries
     provider["country_labels"] = [COUNTRY_LABELS[code] for code in countries if code in COUNTRY_LABELS]
-    provider["price_hint"] = PRICE_HINT_BY_DOMAIN.get(domain, "тариф на сайте")
+    provider["plans"] = _normalize_plans(provider, plans_by_domain)
+    summary = _summarize_plans(provider["plans"])
+    provider.update(summary)
+    provider["price_hint"] = summary["min_price_label"]
     provider["visit_url"] = str(provider.get("referral_url") or provider.get("website_url") or "")
-    provider["plans"] = _normalize_plans(provider)
     provider["api_docs_url"] = str(provider.get("api_docs_url") or API_DOCS_BY_DOMAIN.get(domain, ""))
+    provider["has_api"] = bool(provider["api_docs_url"])
     provider["integration_type"] = str(provider.get("integration_type") or "manual")
     provider["promo_text"] = str(provider.get("promo_text") or "")
     provider["sponsored"] = bool(provider.get("sponsored"))
@@ -176,11 +176,22 @@ def _enrich_provider(provider: dict[str, object]) -> dict[str, object]:
     return provider
 
 
+def _load_raw_providers() -> list[dict[str, object]]:
+    bundle = _bundle_payload()
+    if bundle and bundle.get("providers"):
+        raw = bundle["providers"]
+        if isinstance(raw, list) and raw:
+            return [dict(item) for item in raw]
+    payload = _load_json(TEMPLATES_PATH)
+    if isinstance(payload, list):
+        return [dict(item) for item in payload]
+    return []
+
+
 @lru_cache(maxsize=1)
 def list_provider_templates() -> list[dict[str, object]]:
-    with TEMPLATES_PATH.open(encoding="utf-8-sig") as file:
-        providers = json.load(file)
-    enriched = [_enrich_provider(dict(provider)) for provider in providers]
+    plans_by_domain = load_plans_by_domain()
+    enriched = [_enrich_provider(provider, plans_by_domain) for provider in _load_raw_providers()]
     return sorted(enriched, key=lambda item: str(item["name"]).lower())
 
 
@@ -196,14 +207,26 @@ def provider_countries(providers: list[dict[str, object]] | None = None) -> list
 
 @lru_cache(maxsize=1)
 def provider_catalog_meta() -> dict[str, object]:
-    if not CATALOG_PATH.exists():
-        return {"notice": "", "promos": []}
-    with CATALOG_PATH.open(encoding="utf-8-sig") as file:
-        payload = json.load(file)
-    return {
-        "notice": str(payload.get("notice", "")),
-        "promos": list(payload.get("promos") or []),
-    }
+    bundle = _bundle_payload()
+    if bundle:
+        from app.catalog_sync import catalog_sync_status
+
+        status = catalog_sync_status()
+        return {
+            "notice": str(bundle.get("notice") or ""),
+            "promos": list(bundle.get("promos") or []),
+            "updated_at": str(bundle.get("updated_at") or status.get("updated_at", "")),
+            "source": status.get("source", "remote"),
+        }
+    payload = _load_json(CATALOG_PATH)
+    if isinstance(payload, dict):
+        return {
+            "notice": str(payload.get("notice", "")),
+            "promos": list(payload.get("promos") or []),
+            "updated_at": "",
+            "source": "bundled",
+        }
+    return {"notice": "", "promos": [], "updated_at": "", "source": "bundled"}
 
 
 def provider_template_by_domain(domain: str) -> dict[str, object] | None:
@@ -212,3 +235,9 @@ def provider_template_by_domain(domain: str) -> dict[str, object] | None:
         if str(provider.get("domain", "")).lower() == normalized:
             return provider
     return None
+
+
+def clear_provider_catalog_cache() -> None:
+    list_provider_templates.cache_clear()
+    provider_catalog_meta.cache_clear()
+    load_plans_by_domain.cache_clear()

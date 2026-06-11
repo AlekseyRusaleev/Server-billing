@@ -30,6 +30,10 @@
 
     const countryScroll = document.querySelector("#market-countries");
     const searchInput = document.querySelector("#market-search");
+    const currencyFilter = document.querySelector("#market-filter-currency");
+    const ramFilter = document.querySelector("#market-filter-ram");
+    const apiFilter = document.querySelector("#market-filter-api");
+    const resetFilters = document.querySelector("#market-filter-reset");
     const grid = document.querySelector("#market-grid");
     const listView = document.querySelector("#market-list-view");
     const detailView = document.querySelector("#market-detail-view");
@@ -41,7 +45,6 @@
     if (!grid || !listView || !detailView || !detailRoot) return;
 
     let activeCountry = "";
-    let activeDomain = "";
 
     const matchesSearch = (provider, query) => {
       if (!query) return true;
@@ -54,10 +57,36 @@
       return (provider.countries || []).includes(countryCode);
     };
 
+    const matchesCurrency = (provider, currency) => {
+      if (!currency) return true;
+      if (provider.default_currency === currency) return true;
+      return (provider.plan_currencies || []).includes(currency);
+    };
+
+    const matchesRam = (provider, minRam) => {
+      if (!minRam) return true;
+      const threshold = Number(minRam);
+      if ((provider.max_ram_gb || 0) >= threshold) return true;
+      return (provider.plans || []).some((plan) => Number(plan.ram_gb || 0) >= threshold);
+    };
+
+    const matchesApi = (provider, apiOnly) => {
+      if (!apiOnly) return true;
+      return Boolean(provider.has_api || provider.api_docs_url);
+    };
+
     const filteredProviders = () => {
       const query = (searchInput?.value || "").trim().toLowerCase();
+      const currency = currencyFilter?.value || "";
+      const minRam = ramFilter?.value || "";
+      const apiOnly = Boolean(apiFilter?.checked);
       return providers.filter(
-        (provider) => matchesCountry(provider, activeCountry) && matchesSearch(provider, query),
+        (provider) =>
+          matchesCountry(provider, activeCountry) &&
+          matchesSearch(provider, query) &&
+          matchesCurrency(provider, currency) &&
+          matchesRam(provider, minRam) &&
+          matchesApi(provider, apiOnly),
       );
     };
 
@@ -112,6 +141,7 @@
             </span>
             <strong>${escapeHtml(provider.name)}</strong>
             <span class="market-card-price">${escapeHtml(provider.price_hint || "")}</span>
+            <span class="market-card-meta">${escapeHtml(provider.min_ram_gb ? `от ${provider.min_ram_gb} GB RAM` : "")}</span>
             <span class="market-card-flags">${(provider.country_labels || [])
               .slice(0, 4)
               .map((country) => country.flag)
@@ -153,6 +183,7 @@
           <div class="market-detail-badges">${renderBadges(provider)}</div>
         </div>
         <div class="market-plans">${plans}</div>
+        <p class="muted market-plan-note">Цены — ориентиры с сайта провайдера. Актуальность зависит от даты обновления каталога.</p>
         <div class="market-detail-actions">
           <a class="primary" href="/?add=server&template=${encodeURIComponent(provider.domain)}">Создать сервер</a>
           <a class="secondary" href="${escapeHtml(provider.visit_url || provider.website_url || "#")}" target="_blank" rel="${visitRel}">На сайт провайдера</a>
@@ -162,7 +193,6 @@
     };
 
     const showList = () => {
-      activeDomain = "";
       listView.hidden = false;
       detailView.hidden = true;
     };
@@ -170,10 +200,14 @@
     const showDetail = (domain) => {
       const provider = providers.find((item) => item.domain === domain);
       if (!provider) return;
-      activeDomain = domain;
       renderDetail(provider);
       listView.hidden = true;
       detailView.hidden = false;
+    };
+
+    const refreshList = () => {
+      renderGrid();
+      showList();
     };
 
     countryScroll.innerHTML = [
@@ -190,14 +224,24 @@
         countryScroll.querySelectorAll(".market-country").forEach((node) => {
           node.classList.toggle("active", node === button);
         });
-        renderGrid();
-        showList();
+        refreshList();
       });
     });
 
-    searchInput?.addEventListener("input", () => {
-      renderGrid();
-      showList();
+    searchInput?.addEventListener("input", refreshList);
+    currencyFilter?.addEventListener("change", refreshList);
+    ramFilter?.addEventListener("change", refreshList);
+    apiFilter?.addEventListener("change", refreshList);
+    resetFilters?.addEventListener("click", () => {
+      activeCountry = "";
+      if (searchInput) searchInput.value = "";
+      if (currencyFilter) currencyFilter.value = "";
+      if (ramFilter) ramFilter.value = "";
+      if (apiFilter) apiFilter.checked = false;
+      countryScroll.querySelectorAll(".market-country").forEach((node, index) => {
+        node.classList.toggle("active", index === 0);
+      });
+      refreshList();
     });
 
     grid.addEventListener("click", (event) => {

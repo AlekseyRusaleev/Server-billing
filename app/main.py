@@ -45,6 +45,7 @@ from app.repository import (
 from app.reminders import send_backup, send_due_reminders, send_telegram
 from app.connectors import ConnectorError, build_connector
 from app.provider_sync import sync_account
+from app.catalog_sync import catalog_sync_status, sync_provider_catalog
 from app.provider_templates import list_provider_templates, provider_catalog_meta, provider_countries
 from app.system_update import start_system_update
 from app.sslcheck import run_all as run_ssl_checks
@@ -739,6 +740,8 @@ def settings_page(request: Request, saved: str = "", tested: str = "") -> HTMLRe
             "rates": request.query_params.get("rates", ""),
             "updated": request.query_params.get("updated", ""),
             "update_enabled": bool(settings.app_update_url and settings.app_update_token),
+            "catalog_sync": catalog_sync_status(),
+            "catalog_sync_enabled": bool(settings.provider_catalog_url),
             "version": current_version(),
             "web_terminal_enabled": web_terminal_enabled(),
         },
@@ -844,6 +847,16 @@ def run_reminder_check() -> RedirectResponse:
         return RedirectResponse(f"/settings?checked={sent}", status_code=303)
     except Exception:
         return RedirectResponse("/settings?checked=error", status_code=303)
+
+
+@app.post("/settings/catalog-sync")
+def sync_catalog_now() -> RedirectResponse:
+    try:
+        ok, _message = sync_provider_catalog()
+        result = "1" if ok else "0"
+    except Exception:
+        result = "0"
+    return RedirectResponse(f"/settings?catalog={result}#service", status_code=303)
 
 
 @app.post("/settings/update")

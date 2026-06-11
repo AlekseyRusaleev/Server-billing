@@ -5,6 +5,9 @@
     <p class="eyebrow">Каталог хостеров</p>
     <h1>Провайдеры</h1>
     <p class="muted market-notice" id="market-notice">{{ catalog.notice }}</p>
+    {% if catalog.updated_at %}
+    <p class="muted market-updated">Каталог обновлён: {{ catalog.updated_at }}{% if catalog.source == "remote" %} · remote{% endif %}</p>
+    {% endif %}
   </div>
   <span class="market-count">{{ providers|length }} в каталоге</span>
 </section>
@@ -14,15 +17,37 @@
 <section class="panel market-panel">
   <div class="market-toolbar">
     <div class="market-countries-scroll" id="market-countries"></div>
-    <label class="market-search">
-      <span class="sr-only">Поиск провайдера</span>
-      <input type="search" id="market-search" placeholder="Поиск по названию или домену…" autocomplete="off">
-    </label>
+    <div class="market-controls">
+      <label class="market-search">
+        <span class="sr-only">Поиск провайдера</span>
+        <input type="search" id="market-search" placeholder="Поиск…" autocomplete="off">
+      </label>
+      <div class="market-filters">
+        <select id="market-filter-currency" aria-label="Валюта">
+          <option value="">Любая валюта</option>
+          <option value="RUB">RUB</option>
+          <option value="USD">USD</option>
+          <option value="EUR">EUR</option>
+        </select>
+        <select id="market-filter-ram" aria-label="Минимум RAM">
+          <option value="">Любая RAM</option>
+          <option value="1">от 1 GB</option>
+          <option value="2">от 2 GB</option>
+          <option value="4">от 4 GB</option>
+          <option value="8">от 8 GB</option>
+        </select>
+        <label class="market-filter-check">
+          <input type="checkbox" id="market-filter-api">
+          Только с API
+        </label>
+        <button type="button" class="link-button" id="market-filter-reset">Сброс</button>
+      </div>
+    </div>
   </div>
 
   <div id="market-list-view">
     <div class="market-grid" id="market-grid"></div>
-    <p class="muted market-empty hidden" id="market-empty">Для выбранной страны или запроса ничего не найдено.</p>
+    <p class="muted market-empty hidden" id="market-empty">Для выбранных фильтров ничего не найдено.</p>
   </div>
 
   <div id="market-detail-view" hidden>

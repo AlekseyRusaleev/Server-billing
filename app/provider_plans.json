@@ -1,0 +1,179 @@
+{
+  "plans_by_domain": {
+    "hetzner.com": [
+      {"name": "CX22", "price": 4.15, "currency": "EUR", "cpu": 2, "ram_gb": 4, "storage_gb": 40},
+      {"name": "CX32", "price": 6.8, "currency": "EUR", "cpu": 4, "ram_gb": 8, "storage_gb": 80},
+      {"name": "CX42", "price": 12.8, "currency": "EUR", "cpu": 8, "ram_gb": 16, "storage_gb": 160}
+    ],
+    "digitalocean.com": [
+      {"name": "Basic 1 GB", "price": 4.0, "currency": "USD", "cpu": 1, "ram_gb": 1, "storage_gb": 25},
+      {"name": "Basic 2 GB", "price": 6.0, "currency": "USD", "cpu": 1, "ram_gb": 2, "storage_gb": 50},
+      {"name": "Basic 4 GB", "price": 12.0, "currency": "USD", "cpu": 2, "ram_gb": 4, "storage_gb": 80}
+    ],
+    "vultr.com": [
+      {"name": "Regular 10 GB", "price": 2.5, "currency": "USD", "cpu": 1, "ram_gb": 0.5, "storage_gb": 10},
+      {"name": "Regular 25 GB", "price": 5.0, "currency": "USD", "cpu": 1, "ram_gb": 1, "storage_gb": 25},
+      {"name": "Regular 55 GB", "price": 10.0, "currency": "USD", "cpu": 2, "ram_gb": 2, "storage_gb": 55}
+    ],
+    "linode.com": [
+      {"name": "Nanode 1 GB", "price": 5.0, "currency": "USD", "cpu": 1, "ram_gb": 1, "storage_gb": 25},
+      {"name": "Linode 2 GB", "price": 10.0, "currency": "USD", "cpu": 1, "ram_gb": 2, "storage_gb": 50},
+      {"name": "Linode 4 GB", "price": 20.0, "currency": "USD", "cpu": 2, "ram_gb": 4, "storage_gb": 80}
+    ],
+    "ovhcloud.com": [
+      {"name": "VPS Starter", "price": 4.2, "currency": "EUR", "cpu": 1, "ram_gb": 2, "storage_gb": 20},
+      {"name": "VPS Essential", "price": 8.0, "currency": "EUR", "cpu": 2, "ram_gb": 4, "storage_gb": 80},
+      {"name": "VPS Comfort", "price": 16.0, "currency": "EUR", "cpu": 4, "ram_gb": 8, "storage_gb": 160}
+    ],
+    "scaleway.com": [
+      {"name": "DEV1-S", "price": 7.0, "currency": "EUR", "cpu": 2, "ram_gb": 2, "storage_gb": 20},
+      {"name": "DEV1-M", "price": 14.0, "currency": "EUR", "cpu": 3, "ram_gb": 4, "storage_gb": 40},
+      {"name": "DEV1-L", "price": 28.0, "currency": "EUR", "cpu": 4, "ram_gb": 8, "storage_gb": 80}
+    ],
+    "contabo.com": [
+      {"name": "VPS S SSD", "price": 4.99, "currency": "EUR", "cpu": 4, "ram_gb": 8, "storage_gb": 200},
+      {"name": "VPS M SSD", "price": 8.99, "currency": "EUR", "cpu": 6, "ram_gb": 16, "storage_gb": 400},
+      {"name": "VPS L SSD", "price": 14.99, "currency": "EUR", "cpu": 8, "ram_gb": 30, "storage_gb": 800}
+    ],
+    "timeweb.cloud": [
+      {"name": "Cloud-15", "price": 450, "currency": "RUB", "cpu": 1, "ram_gb": 1, "storage_gb": 15},
+      {"name": "Cloud-30", "price": 700, "currency": "RUB", "cpu": 2, "ram_gb": 2, "storage_gb": 30},
+      {"name": "Cloud-60", "price": 1200, "currency": "RUB", "cpu": 4, "ram_gb": 4, "storage_gb": 60}
+    ],
+    "selectel.ru": [
+      {"name": "Cloud 1 vCPU", "price": 800, "currency": "RUB", "cpu": 1, "ram_gb": 1, "storage_gb": 10},
+      {"name": "Cloud 2 vCPU", "price": 1600, "currency": "RUB", "cpu": 2, "ram_gb": 4, "storage_gb": 40},
+      {"name": "Cloud 4 vCPU", "price": 3200, "currency": "RUB", "cpu": 4, "ram_gb": 8, "storage_gb": 80}
+    ],
+    "reg.ru": [
+      {"name": "VPS-1", "price": 390, "currency": "RUB", "cpu": 1, "ram_gb": 1, "storage_gb": 10},
+      {"name": "VPS-2", "price": 590, "currency": "RUB", "cpu": 2, "ram_gb": 2, "storage_gb": 20},
+      {"name": "VPS-4", "price": 990, "currency": "RUB", "cpu": 2, "ram_gb": 4, "storage_gb": 40}
+    ],
+    "beget.com": [
+      {"name": "VPS Start", "price": 210, "currency": "RUB", "cpu": 1, "ram_gb": 1, "storage_gb": 10},
+      {"name": "VPS Pro", "price": 450, "currency": "RUB", "cpu": 2, "ram_gb": 2, "storage_gb": 30},
+      {"name": "VPS Max", "price": 890, "currency": "RUB", "cpu": 4, "ram_gb": 4, "storage_gb": 60}
+    ],
+    "firstvds.ru": [
+      {"name": "VDS-Start", "price": 299, "currency": "RUB", "cpu": 1, "ram_gb": 1, "storage_gb": 10},
+      {"name": "VDS-Optimal", "price": 599, "currency": "RUB", "cpu": 2, "ram_gb": 2, "storage_gb": 20},
+      {"name": "VDS-Maximum", "price": 999, "currency": "RUB", "cpu": 4, "ram_gb": 4, "storage_gb": 40}
+    ],
+    "vdsina.ru": [
+      {"name": "Start", "price": 350, "currency": "RUB", "cpu": 1, "ram_gb": 1, "storage_gb": 10},
+      {"name": "Standard", "price": 650, "currency": "RUB", "cpu": 2, "ram_gb": 2, "storage_gb": 20},
+      {"name": "Pro", "price": 1200, "currency": "RUB", "cpu": 4, "ram_gb": 4, "storage_gb": 40}
+    ],
+    "aeza.net": [
+      {"name": "SWE-PROMO", "price": 3.6, "currency": "EUR", "cpu": 1, "ram_gb": 2, "storage_gb": 30},
+      {"name": "SWE-BASE", "price": 5.0, "currency": "EUR", "cpu": 2, "ram_gb": 4, "storage_gb": 60},
+      {"name": "SWE-PRO", "price": 9.0, "currency": "EUR", "cpu": 4, "ram_gb": 8, "storage_gb": 120}
+    ],
+    "fornex.com": [
+      {"name": "VPS Start", "price": 5.0, "currency": "EUR", "cpu": 1, "ram_gb": 1, "storage_gb": 20},
+      {"name": "VPS Standard", "price": 10.0, "currency": "EUR", "cpu": 2, "ram_gb": 2, "storage_gb": 40},
+      {"name": "VPS Pro", "price": 20.0, "currency": "EUR", "cpu": 4, "ram_gb": 4, "storage_gb": 80}
+    ],
+    "onlinevds.ru": [
+      {"name": "VDS Start", "price": 500, "currency": "RUB", "cpu": 1, "ram_gb": 1, "storage_gb": 20},
+      {"name": "VDS Standard", "price": 800, "currency": "RUB", "cpu": 2, "ram_gb": 2, "storage_gb": 40},
+      {"name": "VDS Pro", "price": 1400, "currency": "RUB", "cpu": 4, "ram_gb": 4, "storage_gb": 80}
+    ],
+    "hostoff.net": [
+      {"name": "VPS-1", "price": 420, "currency": "RUB", "cpu": 1, "ram_gb": 1, "storage_gb": 15},
+      {"name": "VPS-2", "price": 750, "currency": "RUB", "cpu": 2, "ram_gb": 2, "storage_gb": 30},
+      {"name": "VPS-4", "price": 1300, "currency": "RUB", "cpu": 4, "ram_gb": 4, "storage_gb": 60}
+    ],
+    "rdp-onedash.ru": [
+      {"name": "RDP Basic", "price": 600, "currency": "RUB", "cpu": 2, "ram_gb": 4, "storage_gb": 50},
+      {"name": "RDP Standard", "price": 1200, "currency": "RUB", "cpu": 4, "ram_gb": 8, "storage_gb": 100},
+      {"name": "VPS Start", "price": 400, "currency": "RUB", "cpu": 1, "ram_gb": 2, "storage_gb": 20}
+    ],
+    "ruvds.com": [
+      {"name": "Start", "price": 200, "currency": "RUB", "cpu": 1, "ram_gb": 0.5, "storage_gb": 10},
+      {"name": "Standart", "price": 400, "currency": "RUB", "cpu": 1, "ram_gb": 1, "storage_gb": 20},
+      {"name": "Pro", "price": 800, "currency": "RUB", "cpu": 2, "ram_gb": 2, "storage_gb": 40}
+    ],
+    "adminvps.ru": [
+      {"name": "VPS-1", "price": 350, "currency": "RUB", "cpu": 1, "ram_gb": 1, "storage_gb": 15},
+      {"name": "VPS-2", "price": 650, "currency": "RUB", "cpu": 2, "ram_gb": 2, "storage_gb": 30},
+      {"name": "VPS-4", "price": 1100, "currency": "RUB", "cpu": 4, "ram_gb": 4, "storage_gb": 60}
+    ],
+    "zomro.com": [
+      {"name": "VPS Start", "price": 4.0, "currency": "EUR", "cpu": 1, "ram_gb": 1, "storage_gb": 20},
+      {"name": "VPS Business", "price": 8.0, "currency": "EUR", "cpu": 2, "ram_gb": 2, "storage_gb": 40},
+      {"name": "VPS Pro", "price": 16.0, "currency": "EUR", "cpu": 4, "ram_gb": 4, "storage_gb": 80}
+    ],
+    "serverspace.ru": [
+      {"name": "Cloud-1", "price": 500, "currency": "RUB", "cpu": 1, "ram_gb": 1, "storage_gb": 15},
+      {"name": "Cloud-2", "price": 900, "currency": "RUB", "cpu": 2, "ram_gb": 2, "storage_gb": 30},
+      {"name": "Cloud-4", "price": 1600, "currency": "RUB", "cpu": 4, "ram_gb": 4, "storage_gb": 60}
+    ],
+    "mchost.ru": [
+      {"name": "VPS Start", "price": 300, "currency": "RUB", "cpu": 1, "ram_gb": 1, "storage_gb": 10},
+      {"name": "VPS Optimal", "price": 600, "currency": "RUB", "cpu": 2, "ram_gb": 2, "storage_gb": 20},
+      {"name": "VPS Max", "price": 1100, "currency": "RUB", "cpu": 4, "ram_gb": 4, "storage_gb": 40}
+    ],
+    "sprinthost.ru": [
+      {"name": "VPS-1", "price": 350, "currency": "RUB", "cpu": 1, "ram_gb": 1, "storage_gb": 15},
+      {"name": "VPS-2", "price": 650, "currency": "RUB", "cpu": 2, "ram_gb": 2, "storage_gb": 30},
+      {"name": "VPS-4", "price": 1200, "currency": "RUB", "cpu": 4, "ram_gb": 4, "storage_gb": 60}
+    ],
+    "eurohoster.org": [
+      {"name": "VPS Start", "price": 5.0, "currency": "EUR", "cpu": 1, "ram_gb": 1, "storage_gb": 20},
+      {"name": "VPS Standard", "price": 10.0, "currency": "EUR", "cpu": 2, "ram_gb": 2, "storage_gb": 40},
+      {"name": "VPS Pro", "price": 18.0, "currency": "EUR", "cpu": 4, "ram_gb": 4, "storage_gb": 80}
+    ],
+    "ispserver.com": [
+      {"name": "VPS Start", "price": 500, "currency": "RUB", "cpu": 1, "ram_gb": 1, "storage_gb": 15},
+      {"name": "VPS Business", "price": 1000, "currency": "RUB", "cpu": 2, "ram_gb": 2, "storage_gb": 30},
+      {"name": "Dedicated Entry", "price": 3500, "currency": "RUB", "cpu": 4, "ram_gb": 8, "storage_gb": 120}
+    ],
+    "ionos.com": [
+      {"name": "VPS S", "price": 4.0, "currency": "EUR", "cpu": 1, "ram_gb": 1, "storage_gb": 10},
+      {"name": "VPS M", "price": 8.0, "currency": "EUR", "cpu": 2, "ram_gb": 2, "storage_gb": 40},
+      {"name": "VPS L", "price": 16.0, "currency": "EUR", "cpu": 4, "ram_gb": 4, "storage_gb": 80}
+    ],
+    "hostinger.com": [
+      {"name": "KVM 1", "price": 4.99, "currency": "USD", "cpu": 1, "ram_gb": 1, "storage_gb": 20},
+      {"name": "KVM 2", "price": 6.99, "currency": "USD", "cpu": 2, "ram_gb": 2, "storage_gb": 40},
+      {"name": "KVM 4", "price": 9.99, "currency": "USD", "cpu": 4, "ram_gb": 4, "storage_gb": 80}
+    ],
+    "aws.amazon.com": [
+      {"name": "Nano", "price": 3.5, "currency": "USD", "cpu": 1, "ram_gb": 0.5, "storage_gb": 20},
+      {"name": "Micro", "price": 5.0, "currency": "USD", "cpu": 1, "ram_gb": 1, "storage_gb": 40},
+      {"name": "Small", "price": 10.0, "currency": "USD", "cpu": 1, "ram_gb": 2, "storage_gb": 60}
+    ],
+    "cloud.google.com": [
+      {"name": "e2-micro", "price_label": "от ~$6/мес", "cpu": 2, "ram_gb": 1, "storage_gb": 10},
+      {"name": "e2-small", "price_label": "от ~$12/мес", "cpu": 2, "ram_gb": 2, "storage_gb": 20},
+      {"name": "e2-medium", "price_label": "от ~$24/мес", "cpu": 2, "ram_gb": 4, "storage_gb": 40}
+    ],
+    "kamatera.com": [
+      {"name": "1 vCPU", "price": 4.0, "currency": "USD", "cpu": 1, "ram_gb": 1, "storage_gb": 20},
+      {"name": "2 vCPU", "price": 8.0, "currency": "USD", "cpu": 2, "ram_gb": 2, "storage_gb": 40},
+      {"name": "4 vCPU", "price": 16.0, "currency": "USD", "cpu": 4, "ram_gb": 4, "storage_gb": 80}
+    ],
+    "upcloud.com": [
+      {"name": "1xCPU-1GB", "price": 5.0, "currency": "USD", "cpu": 1, "ram_gb": 1, "storage_gb": 25},
+      {"name": "1xCPU-2GB", "price": 10.0, "currency": "USD", "cpu": 1, "ram_gb": 2, "storage_gb": 50},
+      {"name": "2xCPU-4GB", "price": 20.0, "currency": "USD", "cpu": 2, "ram_gb": 4, "storage_gb": 80}
+    ],
+    "cherryservers.com": [
+      {"name": "Cloud VPS 1", "price": 10.0, "currency": "EUR", "cpu": 1, "ram_gb": 2, "storage_gb": 30},
+      {"name": "Cloud VPS 2", "price": 20.0, "currency": "EUR", "cpu": 2, "ram_gb": 4, "storage_gb": 60},
+      {"name": "Cloud VPS 4", "price": 40.0, "currency": "EUR", "cpu": 4, "ram_gb": 8, "storage_gb": 120}
+    ],
+    "leaseweb.com": [
+      {"name": "VPS S", "price": 10.0, "currency": "EUR", "cpu": 2, "ram_gb": 2, "storage_gb": 40},
+      {"name": "VPS M", "price": 20.0, "currency": "EUR", "cpu": 4, "ram_gb": 4, "storage_gb": 80},
+      {"name": "VPS L", "price": 40.0, "currency": "EUR", "cpu": 8, "ram_gb": 8, "storage_gb": 160}
+    ],
+    "4vps.su": [
+      {"name": "VPS Start", "price": 90, "currency": "RUB", "cpu": 1, "ram_gb": 1, "storage_gb": 10},
+      {"name": "VPS Pro", "price": 300, "currency": "RUB", "cpu": 2, "ram_gb": 2, "storage_gb": 30},
+      {"name": "Dedicated", "price": 1500, "currency": "RUB", "cpu": 4, "ram_gb": 8, "storage_gb": 120}
+    ]
+  }
+}

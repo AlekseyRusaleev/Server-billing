@@ -161,8 +161,12 @@ amount / billing_period_days * 30
 
 ```text
 app/provider_templates.json
+app/provider_plans.json
 app/provider_catalog.json
+app/provider_bundle.example.json   — формат remote-обновления
 ```
+
+Remote-обновление: задайте `PROVIDER_CATALOG_URL` в `.env` (URL JSON-bundle, см. example). Scheduler подтягивает каталог раз в сутки; в **Настройках → Сервис** можно обновить вручную.
 
 У шаблона может быть поле `referral_url`. Если оно заполнено, кнопка «На сайт провайдера» ведёт по партнёрской ссылке. Иначе используется `website_url`.
 

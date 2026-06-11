@@ -20,6 +20,7 @@ from app.repository import (
     notification_settings,
     ssl_alert_already_sent,
 )
+from app.catalog_sync import sync_provider_catalog
 from app.provider_sync import SyncResult, sync_due_accounts
 from app.sslcheck import SslResult, run_all as run_ssl_checks
 from app.telegram import build_payment_deeplink
@@ -290,12 +291,15 @@ def main() -> None:
     logger.info("Reminder worker started.")
     while True:
         try:
+            catalog_ok, catalog_message = sync_provider_catalog()
             synced = run_provider_sync()
             sent = send_due_reminders()
             ssl_alerts = check_ssl_certificates()
             backup_sent = send_due_backup()
             logger.info(
-                "Check finished. Synced accounts notified: %s. Reminders sent: %s. SSL alerts: %s. Backup sent: %s. Date: %s",
+                "Check finished. Catalog: %s (%s). Synced accounts notified: %s. Reminders sent: %s. SSL alerts: %s. Backup sent: %s. Date: %s",
+                "ok" if catalog_ok else "skip",
+                catalog_message,
                 synced,
                 sent,
                 ssl_alerts,

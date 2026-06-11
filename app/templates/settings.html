@@ -42,6 +42,11 @@
 {% elif updated == "0" %}
 <div class="notice">Не удалось запустить обновление. Проверьте updater service и токен.</div>
 {% endif %}
+{% if request.query_params.get("catalog") == "1" %}
+<div class="notice success">Каталог провайдеров обновлён.</div>
+{% elif request.query_params.get("catalog") == "0" %}
+<div class="notice">Не удалось обновить каталог. Проверьте PROVIDER_CATALOG_URL.</div>
+{% endif %}
 {% if bot == "1" %}
 <div class="notice success">Telegram bot подключен.</div>
 {% elif bot == "0" %}
@@ -179,7 +184,7 @@
   </div>
 </section>
 
-<section class="settings-section">
+<section class="settings-section" id="service">
   <div class="settings-section-head">
     <h2>Сервис</h2>
   </div>
@@ -220,6 +225,24 @@
       <p class="muted">Кнопка подтянет свежую версию из репозитория и пересоберет Docker Compose на сервере.</p>
       <form method="post" action="/settings/update">
         <button class="secondary" type="submit" {% if not update_enabled %}disabled{% endif %}>Обновить сервис</button>
+      </form>
+    </aside>
+
+    <aside class="panel">
+      <div class="panel-head">
+        <h2>Каталог провайдеров</h2>
+        <span>{{ "remote" if catalog_sync.source == "remote" else "bundled" }}</span>
+      </div>
+      <p class="muted">Автообновление раз в сутки, если задан <code>PROVIDER_CATALOG_URL</code> в .env.</p>
+      <div class="version-box">
+        <div>
+          <span>Обновлён</span>
+          <strong>{{ catalog_sync.updated_at or "из образа" }}</strong>
+        </div>
+      </div>
+      <p class="muted">{{ catalog_sync.message }}</p>
+      <form method="post" action="/settings/catalog-sync">
+        <button class="secondary" type="submit" {% if not catalog_sync_enabled %}disabled{% endif %}>Обновить каталог сейчас</button>
       </form>
     </aside>
 

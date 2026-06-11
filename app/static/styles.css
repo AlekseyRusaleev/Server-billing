@@ -867,6 +867,54 @@ td strong {
   max-width: 360px;
 }
 
+.market-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.market-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.market-filters select {
+  width: auto;
+  min-width: 130px;
+  min-height: 40px;
+  padding: 8px 10px;
+}
+
+.market-filter-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.market-updated {
+  margin: 4px 0 0;
+  font-size: 12px;
+}
+
+.market-card-meta {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.market-plan-note {
+  margin: 0 0 12px;
+  font-size: 12px;
+}
+
 .market-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
