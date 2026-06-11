@@ -5,7 +5,7 @@
     <p class="eyebrow">Панель управления</p>
     <h1>Контроль оплат серверов</h1>
   </div>
-  <button class="primary" type="button" onclick="window.openAddServerModal?.() || document.querySelector('#add-server').showModal()">+ Сервер</button>
+  <button class="primary" onclick="document.querySelector('#add-server').showModal()">+ Сервер</button>
 </section>
 
 <section class="stats">
@@ -38,7 +38,7 @@
   <div class="onboarding-grid">
     {% for item in onboarding %}
     {% if item.action == "open-server-modal" and not item.done %}
-    <button class="onboarding-item" type="button" onclick="window.openAddServerModal?.() || document.querySelector('#add-server').showModal()">
+    <button class="onboarding-item" type="button" onclick="document.querySelector('#add-server').showModal()">
       <span>·</span>
       <strong>{{ item.label }}</strong>
     </button>
@@ -175,5 +175,18 @@
   </aside>
 </section>
 
-{% include "_add_server_modal.html" %}
+<dialog id="add-server" class="modal">
+  <form method="post" action="/servers">
+    <div class="modal-head">
+      <h2>Новый сервер</h2>
+      <button type="button" class="plain" onclick="this.closest('dialog').close()">×</button>
+    </div>
+    {% set server = none %}
+    {% include "_form.html" %}
+    <div class="form-actions">
+      <button type="button" class="secondary" onclick="this.closest('dialog').close()">Отмена</button>
+      <button class="primary" type="submit">Сохранить</button>
+    </div>
+  </form>
+</dialog>
 {% endblock %}

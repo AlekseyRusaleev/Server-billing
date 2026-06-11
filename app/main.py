@@ -45,7 +45,7 @@ from app.repository import (
 from app.reminders import send_backup, send_due_reminders, send_telegram
 from app.connectors import ConnectorError, build_connector
 from app.provider_sync import sync_account
-from app.provider_templates import list_provider_templates, provider_countries
+from app.provider_templates import list_provider_templates
 from app.system_update import start_system_update
 from app.sslcheck import run_all as run_ssl_checks
 from app.terminal import terminal_websocket, web_terminal_enabled
@@ -279,7 +279,6 @@ def dashboard(
             "onboarding": onboarding,
             "donation_url": DONATION_URL,
             "provider_templates": list_provider_templates(),
-            "catalog_countries": provider_countries(),
             "today": date.today(),
             "web_terminal_enabled": web_terminal_enabled(),
             "stats": {
@@ -690,7 +689,7 @@ def calendar_ics() -> Response:
 
 @app.get("/providers")
 def providers_page() -> RedirectResponse:
-    return RedirectResponse("/?add=server", status_code=302)
+    return RedirectResponse("/", status_code=302)
 
 
 @app.get("/settings", response_class=HTMLResponse)

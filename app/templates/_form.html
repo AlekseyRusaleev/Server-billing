@@ -1,5 +1,14 @@
 <div class="form-grid">
   <label class="wide">
+    Шаблон провайдера
+    <select id="server-provider-template">
+      <option value="">Заполнить вручную</option>
+      {% for item in provider_templates %}
+      <option value="{{ loop.index0 }}">{{ item.name }} · {{ item.domain }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label class="wide">
     Аккаунт хостинга
     <select id="server-hosting-account" name="hosting_account_id">
       <option value="0">Без привязки</option>
@@ -93,21 +102,32 @@
 </div>
 <script>
   (() => {
-    const root = document.querySelector("#add-server-form") || document;
+    const templates = {{ provider_templates|tojson }};
     const accounts = {{ account_options|default([])|tojson }};
-    const accountSelect = root.querySelector("#server-hosting-account");
-    if (!accountSelect) return;
+    const templateSelect = document.querySelector("#server-provider-template");
+    const accountSelect = document.querySelector("#server-hosting-account");
     const setValue = (selector, value, overwrite = false) => {
-      const field = root.querySelector(selector);
+      const field = document.querySelector(selector);
       if (!field || value === undefined || value === null || value === "") return;
       if (overwrite || !field.value) field.value = value;
     };
-    accountSelect.addEventListener("change", () => {
+    accountSelect?.addEventListener("change", () => {
       const item = accounts.find((account) => String(account.id) === accountSelect.value);
       if (!item) return;
       setValue("#server-provider", item.provider, true);
       setValue("#server-panel-url", item.panel_url);
       setValue("#server-payment-url", item.payment_url || item.panel_url);
+    });
+    templateSelect?.addEventListener("change", () => {
+      const item = templates[Number(templateSelect.value)];
+      if (!item) return;
+      setValue("#server-provider", item.domain || item.name, true);
+      setValue("#server-panel-url", item.panel_url);
+      setValue("#server-payment-url", item.payment_url || item.panel_url);
+      setValue("#server-period", item.billing_period_days, true);
+      setValue("#server-currency", item.default_currency, true);
+      const notes = [item.service_hint, item.notes].filter(Boolean).join("\n");
+      setValue("#server-notes", notes);
     });
   })();
 </script>

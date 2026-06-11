@@ -426,121 +426,6 @@ td strong {
   box-shadow: var(--shadow);
 }
 
-.modal-catalog {
-  width: min(920px, calc(100% - 32px));
-}
-
-.modal-subtitle {
-  margin: 4px 0 0;
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.hidden {
-  display: none !important;
-}
-
-.catalog-step {
-  padding: 0 0 4px;
-}
-
-.catalog-search-label {
-  display: grid;
-  gap: 7px;
-  margin-bottom: 12px;
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.catalog-countries {
-  margin-bottom: 14px;
-}
-
-.catalog-countries .country-chip {
-  cursor: pointer;
-  font: inherit;
-}
-
-.catalog-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-  gap: 10px;
-  max-height: min(52vh, 420px);
-  overflow: auto;
-  padding-right: 2px;
-}
-
-.catalog-card {
-  display: grid;
-  gap: 4px;
-  align-content: start;
-  min-height: 108px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: white;
-  padding: 12px;
-  text-align: left;
-  cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
-}
-
-.catalog-card:hover,
-.catalog-card:focus-visible {
-  border-color: #b9cef6;
-  background: #f8fbff;
-  outline: none;
-}
-
-.catalog-card-domain {
-  color: var(--blue);
-  font-size: 12px;
-  font-weight: 650;
-}
-
-.catalog-card strong {
-  font-size: 15px;
-  line-height: 1.25;
-}
-
-.catalog-card-meta {
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.catalog-card-flags {
-  margin-top: auto;
-  font-size: 14px;
-  letter-spacing: 1px;
-}
-
-.catalog-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid var(--line);
-}
-
-.catalog-back {
-  margin: 4px 0 8px;
-}
-
-.catalog-selected {
-  margin: 0 0 8px;
-  color: var(--blue);
-  font-size: 13px;
-  font-weight: 650;
-}
-
-.form-step .form-grid {
-  margin-top: 8px;
-}
-
 .modal::backdrop {
   background: rgba(23, 32, 42, 0.35);
 }
@@ -1285,16 +1170,6 @@ td strong {
 
   .form-grid {
     grid-template-columns: 1fr;
-  }
-
-  .catalog-grid {
-    grid-template-columns: 1fr;
-    max-height: none;
-  }
-
-  .catalog-footer {
-    align-items: stretch;
-    flex-direction: column;
   }
 
   .setup-step {
