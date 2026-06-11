@@ -146,9 +146,9 @@
       {"name": "Small", "price": 10.0, "currency": "USD", "cpu": 1, "ram_gb": 2, "storage_gb": 60}
     ],
     "cloud.google.com": [
-      {"name": "e2-micro", "price_label": "от ~$6/мес", "cpu": 2, "ram_gb": 1, "storage_gb": 10},
-      {"name": "e2-small", "price_label": "от ~$12/мес", "cpu": 2, "ram_gb": 2, "storage_gb": 20},
-      {"name": "e2-medium", "price_label": "от ~$24/мес", "cpu": 2, "ram_gb": 4, "storage_gb": 40}
+      {"name": "e2-micro", "price": 6.0, "currency": "USD", "cpu": 2, "ram_gb": 1, "storage_gb": 10},
+      {"name": "e2-small", "price": 12.0, "currency": "USD", "cpu": 2, "ram_gb": 2, "storage_gb": 20},
+      {"name": "e2-medium", "price": 24.0, "currency": "USD", "cpu": 2, "ram_gb": 4, "storage_gb": 40}
     ],
     "kamatera.com": [
       {"name": "1 vCPU", "price": 4.0, "currency": "USD", "cpu": 1, "ram_gb": 1, "storage_gb": 20},

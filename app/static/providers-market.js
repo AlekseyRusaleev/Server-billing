@@ -121,7 +121,7 @@
 
     const renderBadges = (provider) => {
       const badges = [];
-      if (provider.api_docs_url) badges.push('<span class="market-badge market-badge-api">API</span>');
+      if (provider.api_docs_url) badges.push('<span class="market-badge market-badge-api">API docs</span>');
       if (provider.integration_type === "billmanager") {
         badges.push('<span class="market-badge">BILLmanager</span>');
       }
@@ -136,16 +136,15 @@
           (provider) => `
           <button type="button" class="market-card" data-domain="${escapeHtml(provider.domain)}">
             <span class="market-card-top">
-              <span class="market-card-domain">${escapeHtml(provider.domain)}</span>
+              <strong class="market-card-name">${escapeHtml(provider.name)}</strong>
               <span class="market-card-badges">${renderBadges(provider)}</span>
             </span>
-            <strong>${escapeHtml(provider.name)}</strong>
+            <span class="market-card-domain">${escapeHtml(provider.domain)}</span>
             <span class="market-card-price">${escapeHtml(provider.price_hint || "")}</span>
-            <span class="market-card-meta">${escapeHtml(provider.min_ram_gb ? `от ${provider.min_ram_gb} GB RAM` : "")}</span>
             <span class="market-card-flags">${(provider.country_labels || [])
-              .slice(0, 4)
-              .map((country) => country.flag)
-              .join(" ")}</span>
+              .slice(0, 8)
+              .map((country) => `<span class="market-card-flag" title="${escapeHtml(country.name)}">${country.flag}</span>`)
+              .join("")}</span>
           </button>
         `,
         )
@@ -158,7 +157,7 @@
         ? `<p class="market-detail-promo">${escapeHtml(provider.promo_text)}</p>`
         : "";
       const api = provider.api_docs_url
-        ? `<a class="secondary-link" href="${escapeHtml(provider.api_docs_url)}" target="_blank" rel="noreferrer">Документация API</a>`
+        ? `<a class="secondary-link" href="${escapeHtml(provider.api_docs_url)}" target="_blank" rel="noreferrer">API docs</a>`
         : "";
       const plans = (provider.plans || [])
         .map(
@@ -211,10 +210,10 @@
     };
 
     countryScroll.innerHTML = [
-      `<button type="button" class="market-country active" data-country="">🌍 Все</button>`,
+      `<button type="button" class="market-country active" data-country="" title="Все страны">🌍</button>`,
       ...countries.map(
         (country) =>
-          `<button type="button" class="market-country" data-country="${escapeHtml(country.code)}">${country.flag} ${escapeHtml(country.name)}</button>`,
+          `<button type="button" class="market-country" data-country="${escapeHtml(country.code)}" title="${escapeHtml(country.name)}"><span class="market-country-flag">${country.flag}</span><span class="market-country-code">${escapeHtml(country.code)}</span></button>`,
       ),
     ].join("");
 
