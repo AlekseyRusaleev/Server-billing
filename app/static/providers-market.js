@@ -334,8 +334,8 @@
 
     backButton?.addEventListener("click", showList);
 
-    if (notice && document.querySelector("#market-notice")) {
-      document.querySelector("#market-notice").textContent = notice;
+    if (notice && document.querySelector("#market-catalog-notice")) {
+      document.querySelector("#market-catalog-notice").textContent = notice;
     }
 
     renderPromos();

@@ -773,6 +773,65 @@ td strong {
   align-items: flex-end;
 }
 
+.market-head-lead {
+  margin: 6px 0 0;
+  font-size: 14px;
+}
+
+.market-catalog-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin-bottom: 14px;
+  padding: 12px 16px;
+}
+
+.market-catalog-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.market-catalog-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fafbfd;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.market-catalog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.market-catalog-sync-btn {
+  white-space: nowrap;
+}
+
+.market-catalog-settings-link {
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.market-catalog-notice {
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: 12px;
+}
+
 .market-notice {
   margin: 6px 0 0;
   max-width: 640px;

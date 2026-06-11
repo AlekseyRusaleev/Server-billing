@@ -4,27 +4,47 @@
   <div>
     <p class="eyebrow">Каталог хостеров</p>
     <h1>Провайдеры</h1>
-    <p class="muted market-notice" id="market-notice">{{ catalog.notice }}</p>
-    <p class="muted market-updated">
-      {% if catalog.prices_as_of_label %}Цены актуальны на {{ catalog.prices_as_of_label }}.{% endif %}
-      {% if catalog.updated_at %} Каталог: {{ catalog.updated_at }}{% if catalog.source == "remote" %} · remote{% endif %}.{% endif %}
-    </p>
+    <p class="muted market-head-lead">{{ providers|length }} хостеров · сравнение тарифов и локаций</p>
   </div>
-  <div class="market-head-actions">
-    <span class="market-count">{{ providers|length }} в каталоге</span>
-    {% if catalog.sync_enabled %}
-    <form method="post" action="/providers/sync" id="market-catalog-sync-form">
-      <button class="secondary" type="submit" id="market-catalog-sync-btn">Обновить цены</button>
-    </form>
+</section>
+
+<section class="panel market-catalog-bar">
+  <div class="market-catalog-meta">
+    {% if catalog.prices_as_of_label %}
+    <span class="market-catalog-chip">Цены на {{ catalog.prices_as_of_label }}</span>
+    {% endif %}
+    <span class="market-catalog-chip muted">
+      {{ "каталог online" if catalog.source == "remote" else "каталог из образа" }}
+    </span>
+    {% if catalog.updated_at %}
+    <span class="market-catalog-chip muted">синхр. {{ catalog.updated_at }}</span>
     {% endif %}
   </div>
+  <div class="market-catalog-actions">
+    <form method="post" action="/providers/sync" id="market-catalog-sync-form">
+      <button
+        class="secondary market-catalog-sync-btn"
+        type="submit"
+        id="market-catalog-sync-btn"
+        {% if not catalog.sync_enabled %}disabled title="Задайте PROVIDER_CATALOG_URL в .env"{% endif %}
+      >
+        Обновить каталог
+      </button>
+    </form>
+    {% if not catalog.sync_enabled %}
+    <a class="secondary-link market-catalog-settings-link" href="/settings#service">Настроить URL</a>
+    {% endif %}
+  </div>
+  {% if catalog.notice %}
+  <p class="muted market-catalog-notice">{{ catalog.notice }}</p>
+  {% endif %}
 </section>
 
 <section class="panel market-promos-panel" id="market-promos"></section>
 {% if request.query_params.get("catalog") == "1" %}
-<div class="notice success">Цены и каталог обновлены.</div>
+<div class="notice success">Каталог провайдеров обновлён.</div>
 {% elif request.query_params.get("catalog") == "0" %}
-<div class="notice">Не удалось обновить каталог. Проверьте PROVIDER_CATALOG_URL в .env.</div>
+<div class="notice">Не удалось обновить каталог. Задайте <code>PROVIDER_CATALOG_URL</code> в .env или в <a href="/settings#service">Настройках → Сервис</a>.</div>
 {% endif %}
 
 <section class="panel market-panel">
