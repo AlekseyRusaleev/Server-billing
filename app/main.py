@@ -58,7 +58,7 @@ from app.telegram import (
     telegram_bot_link,
     telegram_bot_username,
 )
-from app.version import current_version
+from app.integrations import INTEGRATION_OPTIONS, SUPPORTED_INTEGRATIONS
 
 app = FastAPI(title=settings.app_name)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
@@ -214,9 +214,6 @@ def parse_payment_date(value: str) -> str:
         except ValueError:
             continue
     raise HTTPException(status_code=400, detail="Дата должна быть в формате дд.мм.гггг")
-
-
-SUPPORTED_INTEGRATIONS = {"manual", "billmanager"}
 
 
 def account_payload(
@@ -380,6 +377,7 @@ def edit_server(request: Request, server_id: int) -> HTMLResponse:
             "accounts": accounts,
             "account_options": account_form_options(accounts),
             "provider_templates": list_provider_templates(),
+            "integration_options": INTEGRATION_OPTIONS,
             "donation_url": DONATION_URL,
             "web_terminal_enabled": web_terminal_enabled(),
         },
@@ -476,6 +474,7 @@ def accounts_page(request: Request) -> HTMLResponse:
             "request": request,
             "accounts": list_accounts(),
             "provider_templates": list_provider_templates(),
+            "integration_options": INTEGRATION_OPTIONS,
             "donation_url": DONATION_URL,
             "synced": request.query_params.get("synced", ""),
             "test": request.query_params.get("test", ""),
@@ -524,6 +523,7 @@ def edit_account(request: Request, account_id: int) -> HTMLResponse:
             "request": request,
             "account": account,
             "provider_templates": list_provider_templates(),
+            "integration_options": INTEGRATION_OPTIONS,
             "donation_url": DONATION_URL,
         },
     )

@@ -14,9 +14,11 @@
 <section class="panel"><p class="notice error">Синхронизация завершилась с ошибкой. Смотрите статус аккаунта ниже.</p></section>
 {% endif %}
 {% if test == 'ok' %}
-<section class="panel"><p class="notice ok">Подключение к BILLmanager успешно.</p></section>
+<section class="panel"><p class="notice ok">Подключение к API провайдера успешно.</p></section>
 {% elif test == 'error' %}
-<section class="panel"><p class="notice error">Не удалось подключиться к BILLmanager. Проверьте URL, логин и API-пароль.</p></section>
+<section class="panel"><p class="notice error">Не удалось подключиться к API провайдера. Проверьте тип интеграции, URL и секрет.</p></section>
+{% elif test == 'manual' %}
+<section class="panel"><p class="notice">Для ручного аккаунта проверка API недоступна.</p></section>
 {% endif %}
 
 <section class="panel">

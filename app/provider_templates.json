@@ -193,6 +193,8 @@
     "domain": "rdp-onedash.ru",
     "website_url": "https://rdp-onedash.ru/",
     "referral_url": "https://rdp-onedash.ru/r/48a3f",
+    "api_docs_url": "https://github.com/OneDashRDP/api-docs/blob/main/Документация%20RU.md",
+    "integration_type": "onedash",
     "panel_url": "https://rdp-onedash.ru/clientarea.php",
     "payment_url": "https://rdp-onedash.ru/clientarea.php?action=invoices",
     "default_currency": "RUB",

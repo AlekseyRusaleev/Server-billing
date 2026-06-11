@@ -5,19 +5,19 @@
   </label>
   <label>
     Название аккаунта
-    <input id="account-name" name="name" value="{{ account.name if account else '' }}" required placeholder="OnlineVDS основной">
+    <input id="account-name" name="name" value="{{ account.name if account else '' }}" required placeholder="OneDash основной">
   </label>
   <label>
     Провайдер
-    <input id="account-provider" name="provider" value="{{ account.provider if account else '' }}" required placeholder="onlinevds.ru">
+    <input id="account-provider" name="provider" value="{{ account.provider if account else '' }}" required placeholder="rdp-onedash.ru">
   </label>
-  <label>
+  <label id="account-login-field">
     Логин
-    <input name="login" value="{{ account.login if account else '' }}" autocomplete="off" placeholder="email или username">
+    <input id="account-login" name="login" value="{{ account.login if account else '' }}" autocomplete="off" placeholder="email или username">
   </label>
-  <label>
-    Пароль / секрет
-    <input type="password" name="auth_secret" value="" autocomplete="new-password" placeholder="{{ 'сохранён, оставьте пустым чтобы не менять' if account and account.auth_secret else 'пароль, API-ключ или заметка' }}">
+  <label id="account-secret-field">
+    <span id="account-secret-label">Пароль / секрет</span>
+    <input type="password" id="account-auth-secret" name="auth_secret" value="" autocomplete="new-password" placeholder="{{ 'сохранён, оставьте пустым чтобы не менять' if account and account.auth_secret else 'пароль, API-ключ или заметка' }}">
     {% if account and account.auth_secret %}<small class="muted">Секрет сохранён и скрыт. Введите новый, чтобы изменить.</small>{% endif %}
   </label>
   <label class="wide">
@@ -35,31 +35,69 @@
   <label>
     Тип интеграции
     <select id="account-integration-type" name="integration_type">
-      <option value="manual" {% if not account or account.integration_type == 'manual' %}selected{% endif %}>Ручной</option>
-      <option value="billmanager" {% if account and account.integration_type == 'billmanager' %}selected{% endif %}>BILLmanager</option>
+      {% for option in integration_options %}
+      <option value="{{ option.id }}" {% if (account and account.integration_type == option.id) or (not account and option.id == 'manual') %}selected{% endif %}>{{ option.label }}</option>
+      {% endfor %}
     </select>
   </label>
-  <label class="integration-field">
-    URL биллинга (BILLmanager)
-    <input id="account-integration-url" name="integration_url" value="{{ account.integration_url if account else '' }}" placeholder="https://billing.provider.ru">
+  <label class="integration-field" id="account-integration-url-field">
+    <span id="account-integration-url-label">URL API / биллинга</span>
+    <input id="account-integration-url" name="integration_url" value="{{ account.integration_url if account else '' }}" placeholder="https://...">
   </label>
   <label class="integration-field checkbox-label">
     <input type="checkbox" id="account-auto-sync" name="auto_sync_enabled" value="on" {% if account and account.auto_sync_enabled %}checked{% endif %}>
     Автосинхронизация услуг и дат оплаты
   </label>
-  <p class="integration-field muted wide" id="account-integration-hint">
-    Ручной режим работает для любого хостера. BILLmanager-синхронизация подтягивает услуги, даты и суммы автоматически — подключение появится в следующем обновлении, поля можно заполнить заранее.
-  </p>
+  <p class="integration-field muted wide" id="account-integration-hint"></p>
 </div>
 <script>
   (() => {
     const templates = {{ provider_templates|tojson }};
+    const integrationOptions = {{ integration_options|tojson }};
     const templatePicker = document.querySelector(".form-grid [data-template-picker]");
+    const integrationType = document.querySelector("#account-integration-type");
+    const integrationFields = document.querySelectorAll(".integration-field");
+    const integrationHint = document.querySelector("#account-integration-hint");
+    const loginField = document.querySelector("#account-login-field");
+    const secretLabel = document.querySelector("#account-secret-label");
+    const secretInput = document.querySelector("#account-auth-secret");
+    const urlLabel = document.querySelector("#account-integration-url-label");
+    const urlField = document.querySelector("#account-integration-url-field");
+
     const setValue = (selector, value, overwrite = false) => {
       const field = document.querySelector(selector);
       if (!field || value === undefined || value === null || value === "") return;
       if (overwrite || !field.value) field.value = value;
     };
+
+    const hintFor = (type) => {
+      const item = integrationOptions.find((option) => option.id === type);
+      return item?.hint || "";
+    };
+
+    const applyIntegrationUi = () => {
+      const type = integrationType?.value || "manual";
+      const show = type !== "manual";
+      integrationFields.forEach((field) => {
+        field.style.display = show ? "" : "none";
+      });
+      if (integrationHint) integrationHint.textContent = hintFor(type);
+
+      if (loginField) loginField.style.display = type === "onedash" ? "none" : "";
+      if (secretLabel) {
+        secretLabel.textContent =
+          type === "onedash" ? "Api-Key OneDash" : type === "billmanager" ? "Пароль API BILLmanager" : "Пароль / секрет";
+      }
+      if (secretInput) {
+        secretInput.placeholder =
+          type === "onedash" ? "Api-Key из личного кабинета" : "пароль, API-ключ или заметка";
+      }
+      if (urlField) urlField.style.display = type === "onedash" ? "none" : show ? "" : "none";
+      if (urlLabel) {
+        urlLabel.textContent = type === "billmanager" ? "URL биллинга (BILLmanager)" : "URL API / биллинга";
+      }
+    };
+
     const bootPicker = () => {
       if (!templatePicker || !window.initTemplatePicker) return;
       initTemplatePicker(templatePicker, templates, (item) => {
@@ -70,25 +108,22 @@
         setValue("#account-payment-url", item.payment_url || item.panel_url);
         const notes = [item.service_hint, item.notes].filter(Boolean).join("\n");
         setValue("#account-notes", notes);
+        if (item.integration_type && item.integration_type !== "manual" && integrationType) {
+          integrationType.value = item.integration_type;
+          applyIntegrationUi();
+        }
       });
     };
+
+    if (integrationType) {
+      integrationType.addEventListener("change", applyIntegrationUi);
+      applyIntegrationUi();
+    }
+
     if (document.readyState === "loading") {
       document.addEventListener("DOMContentLoaded", bootPicker);
     } else {
       bootPicker();
-    }
-
-    const integrationType = document.querySelector("#account-integration-type");
-    const integrationFields = document.querySelectorAll(".integration-field");
-    const toggleIntegration = () => {
-      const show = integrationType && integrationType.value !== "manual";
-      integrationFields.forEach((field) => {
-        field.style.display = show ? "" : "none";
-      });
-    };
-    if (integrationType) {
-      integrationType.addEventListener("change", toggleIntegration);
-      toggleIntegration();
     }
   })();
 </script>

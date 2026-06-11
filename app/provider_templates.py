@@ -43,7 +43,6 @@ API_DOCS_BY_DOMAIN = {
     "aws.amazon.com": "https://docs.aws.amazon.com/lightsail/",
     "cloud.google.com": "https://cloud.google.com/compute/docs/reference/rest/v1",
     "4vps.su": "https://4vps.su/page/api",
-    "rdp-onedash.ru": "https://github.com/OneDashRDP/api-docs/blob/main/Документация%20RU.md",
 }
 
 CURRENCY_SYMBOL = {"RUB": "₽", "USD": "$", "EUR": "€"}

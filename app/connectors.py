@@ -57,4 +57,11 @@ def build_connector(account: HostingAccount) -> ProviderConnector | None:
             login=account.login,
             password=account.auth_secret,
         )
+    if account.integration_type == "onedash":
+        from app.onedash import OneDashConnector
+
+        return OneDashConnector(
+            api_key=account.auth_secret,
+            api_base=account.integration_url or "",
+        )
     return None

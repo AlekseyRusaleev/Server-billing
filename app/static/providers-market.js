@@ -196,6 +196,8 @@
       if (provider.api_docs_url) badges.push('<span class="market-badge market-badge-api">API docs</span>');
       if (provider.integration_type === "billmanager") {
         badges.push('<span class="market-badge">BILLmanager</span>');
+      } else if (provider.integration_type === "onedash") {
+        badges.push('<span class="market-badge">OneDash API</span>');
       }
       if (provider.sponsored) badges.push('<span class="market-badge market-badge-partner">Партнёр</span>');
       return badges.join("");

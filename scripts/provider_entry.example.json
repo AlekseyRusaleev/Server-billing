@@ -1,0 +1,14 @@
+{
+  "name": "Example Host",
+  "domain": "example.com",
+  "website_url": "https://example.com/",
+  "referral_url": "https://example.com/r/your-code",
+  "api_docs_url": "https://example.com/docs/api",
+  "integration_type": "manual",
+  "panel_url": "https://example.com/client",
+  "payment_url": "https://example.com/client/billing",
+  "default_currency": "RUB",
+  "billing_period_days": 30,
+  "service_hint": "Где искать серверы в кабинете.",
+  "notes": "Краткая заметка для формы аккаунта."
+}

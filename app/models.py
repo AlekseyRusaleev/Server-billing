@@ -7,10 +7,7 @@ from sqlite3 import Row
 from app.crypto import decrypt_secret
 
 
-INTEGRATION_LABELS = {
-    "manual": "Ручной",
-    "billmanager": "BILLmanager",
-}
+from app.integrations import INTEGRATION_LABELS
 
 
 @dataclass(frozen=True)
