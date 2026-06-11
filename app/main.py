@@ -59,6 +59,7 @@ from app.telegram import (
     telegram_bot_username,
 )
 from app.integrations import INTEGRATION_OPTIONS, SUPPORTED_INTEGRATIONS
+from app.version import current_version
 
 app = FastAPI(title=settings.app_name)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")

@@ -66,6 +66,7 @@ class OneDashConnector:
             logger.info("OneDash balance response without data block.")
 
     def list_services(self) -> list[RemoteService]:
+        tariffs = _load_tariffs(self._request("tariffs"))
         payload = self._request("all-orders")
         orders = payload.get("data")
         if not isinstance(orders, list):
@@ -75,8 +76,71 @@ class OneDashConnector:
         for order in orders:
             if not isinstance(order, dict):
                 continue
-            services.extend(_services_from_order(order))
+            services.extend(_services_from_order(order, tariffs))
         return services
+
+
+def _load_tariffs(payload: dict[str, object]) -> dict[int, dict[str, object]]:
+    rows = payload.get("data")
+    if not isinstance(rows, list):
+        return {}
+    tariffs: dict[int, dict[str, object]] = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        try:
+            tariff_id = int(row.get("id"))
+        except (TypeError, ValueError):
+            continue
+        tariffs[tariff_id] = row
+    return tariffs
+
+
+def _effective_price(price_row: dict[str, object]) -> float:
+    price = float(price_row.get("price") or 0)
+    discount = float(price_row.get("discount") or 0)
+    if discount > 0:
+        return price * (1 - discount / 100)
+    return price
+
+
+def _monthly_amount(tariffs: dict[int, dict[str, object]], tariff_id: int, location: str) -> tuple[float | None, int, str]:
+    tariff = tariffs.get(tariff_id)
+    if not tariff:
+        return None, 30, "RUB"
+
+    location_key = f"{location.strip().lower()}_prices"
+    if location.lower() in {"msk", "ru"}:
+        location_key = "msk_prices"
+    elif location.lower() in {"ams", "nl"}:
+        location_key = "ams_prices"
+    prices = tariff.get(location_key)
+    if not isinstance(prices, list) or not prices:
+        return None, 30, str(tariff.get("currency") or "RUB")
+
+    currency = str(tariff.get("currency") or "RUB")
+    normalized: list[tuple[int, float]] = []
+    for row in prices:
+        if not isinstance(row, dict):
+            continue
+        try:
+            period = int(row.get("period") or 0)
+        except (TypeError, ValueError):
+            continue
+        if period <= 0:
+            continue
+        normalized.append((period, _effective_price(row)))
+
+    if not normalized:
+        return None, 30, currency
+
+    for period, price in normalized:
+        if period == 30:
+            return price, 30, currency
+
+    period, price = min(normalized, key=lambda item: item[1] / item[0])
+    monthly = price / period * 30
+    return monthly, 30, currency
 
 
 def _parse_finish_date(raw: object) -> datetime | None:
@@ -98,13 +162,18 @@ def _parse_finish_date(raw: object) -> datetime | None:
     return None
 
 
-def _services_from_order(order: dict[str, object]) -> list[RemoteService]:
+def _services_from_order(order: dict[str, object], tariffs: dict[int, dict[str, object]]) -> list[RemoteService]:
     order_id = str(order.get("order_id") or "").strip()
     tariff = order.get("tariff") if isinstance(order.get("tariff"), dict) else {}
     tariff_name = str(tariff.get("name") or "OneDash").strip()
-    location = str(order.get("location") or "").strip().upper()
+    try:
+        tariff_id = int(tariff.get("id") or 0)
+    except (TypeError, ValueError):
+        tariff_id = 0
+    location = str(order.get("location") or "").strip().lower()
     finish_time = _parse_finish_date(order.get("finish_time"))
     next_payment_date = finish_time.date() if finish_time else None
+    amount, billing_period_days, currency = _monthly_amount(tariffs, tariff_id, location)
 
     vps_list = order.get("vps_list")
     if not isinstance(vps_list, list) or not vps_list:
@@ -112,10 +181,12 @@ def _services_from_order(order: dict[str, object]) -> list[RemoteService]:
             return [
                 RemoteService(
                     service_id=order_id,
-                    name=f"{tariff_name} {location}".strip(),
+                    name=f"{tariff_name} {location.upper()}".strip(),
                     status="active",
                     next_payment_date=next_payment_date,
-                    currency="RUB",
+                    amount=amount,
+                    currency=currency,
+                    billing_period_days=billing_period_days,
                 )
             ]
         return []
@@ -132,7 +203,7 @@ def _services_from_order(order: dict[str, object]) -> list[RemoteService]:
         status_raw = str(vps.get("vps_status") or "").strip().lower()
         name_parts = [tariff_name]
         if location:
-            name_parts.append(location)
+            name_parts.append(location.upper())
         if os_name:
             name_parts.append(os_name)
         if ip_address:
@@ -144,7 +215,9 @@ def _services_from_order(order: dict[str, object]) -> list[RemoteService]:
                 ip_address=ip_address,
                 status=VPS_STATUS_MAP.get(status_raw, "active"),
                 next_payment_date=next_payment_date,
-                currency="RUB",
+                amount=amount,
+                currency=currency,
+                billing_period_days=billing_period_days,
             )
         )
     return services

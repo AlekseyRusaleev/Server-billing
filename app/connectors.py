@@ -34,6 +34,7 @@ class RemoteService:
     amount: float | None = None
     currency: str = ""
     payment_url: str = ""
+    billing_period_days: int | None = None
 
 
 @runtime_checkable

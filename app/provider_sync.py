@@ -62,7 +62,7 @@ def _new_server_payload(account: HostingAccount, service: RemoteService) -> dict
         "service_id": service.service_id,
         "amount": service.amount or 0,
         "currency": service.currency or "RUB",
-        "billing_period_days": 30,
+        "billing_period_days": service.billing_period_days or 30,
         "next_payment_date": next_date.isoformat(),
         "payment_url": service.payment_url or account.payment_url,
         "panel_url": account.panel_url,

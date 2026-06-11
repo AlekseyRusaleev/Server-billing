@@ -106,12 +106,12 @@
         <div class="telegram-chat-picker">
           <p class="muted">Найдено чатов: {{ detected_chats|length }}. Выберите, куда слать уведомления:</p>
           <form method="post" action="/settings/telegram/chat/select" class="telegram-chat-picker-form">
-            {% for chat in detected_chats %}
+            {% for detected_chat in detected_chats %}
             <label class="telegram-chat-option">
-              <input type="radio" name="chat_id" value="{{ chat.id }}" {% if loop.first %}checked{% endif %}>
+              <input type="radio" name="chat_id" value="{{ detected_chat.id }}" {% if loop.first %}checked{% endif %}>
               <span class="telegram-chat-option-body">
-                <strong>{{ chat.title }}</strong>
-                <small>{{ chat.type_label }} · id {{ chat.id }}</small>
+                <strong>{{ detected_chat.title }}</strong>
+                <small>{{ detected_chat.type_label }} · id {{ detected_chat.id }}</small>
               </span>
             </label>
             {% endfor %}
