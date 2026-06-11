@@ -1,4 +1,5 @@
-<img width="1865" height="901" alt="image" src="https://github.com/user-attachments/assets/1aa134bb-3187-4cd0-afc7-2cd82bdc45f3" />
+<img width="1874" height="934" alt="image" src="https://github.com/user-attachments/assets/3b7ca0f4-1c3d-4087-9002-416d0066f5fd" />
+
 
 # Server Billing Manager
 
