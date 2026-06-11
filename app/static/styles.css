@@ -821,11 +821,6 @@ td strong {
   white-space: nowrap;
 }
 
-.market-catalog-settings-link {
-  font-size: 13px;
-  white-space: nowrap;
-}
-
 .market-catalog-notice {
   flex: 1 1 100%;
   margin: 0;

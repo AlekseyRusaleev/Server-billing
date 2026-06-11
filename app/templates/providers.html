@@ -31,9 +31,6 @@
         Обновить каталог
       </button>
     </form>
-    {% if not catalog.sync_enabled %}
-    <a class="secondary-link market-catalog-settings-link" href="/settings#service">Настроить URL</a>
-    {% endif %}
   </div>
   {% if catalog.notice %}
   <p class="muted market-catalog-notice">{{ catalog.notice }}</p>
@@ -44,7 +41,7 @@
 {% if request.query_params.get("catalog") == "1" %}
 <div class="notice success">Каталог провайдеров обновлён.</div>
 {% elif request.query_params.get("catalog") == "0" %}
-<div class="notice">Не удалось обновить каталог. Задайте <code>PROVIDER_CATALOG_URL</code> в .env или в <a href="/settings#service">Настройках → Сервис</a>.</div>
+<div class="notice">Не удалось обновить каталог. Проверьте, что в `.env` задан `PROVIDER_CATALOG_URL` и URL доступен по HTTPS.</div>
 {% endif %}
 
 <section class="panel market-panel">
