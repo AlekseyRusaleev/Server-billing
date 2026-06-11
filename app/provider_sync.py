@@ -4,7 +4,7 @@
 Политика конфликтов:
   - из API обновляем: next_payment_date, amount, currency, status, payment_url;
   - name — только если пусто или совпадает с service_id (ручное имя не перетираем);
-  - billing_period_days — для OneDash обновляем из API; для остальных не трогаем;
+  - billing_period_days — для OneDash обновляем из API (период аренды заказа);
   - server_password, server_login, notes — не трогаем никогда;
   - сервер с sync_locked=1 пропускается целиком (ручной режим важнее);
   - услуга, пропавшая у провайдера, помечается status='deleted', но не удаляется.
@@ -176,8 +176,18 @@ def sync_account(account_id: int, *, create_missing: bool = True) -> SyncResult:
     ):
         account = _refresh_onedash_account_urls(account)
 
+    existing = servers_for_account(account_id)
+    known_periods = {
+        server.service_id: server.billing_period_days
+        for server in existing
+        if server.service_id and server.billing_period_days >= 7
+    }
+
     try:
-        remote_services = connector.list_services()
+        if account.integration_type == "onedash":
+            remote_services = connector.list_services(known_periods=known_periods)
+        else:
+            remote_services = connector.list_services()
     except ConnectorError as error:
         result.status = "error"
         result.message = str(error)
@@ -185,7 +195,6 @@ def sync_account(account_id: int, *, create_missing: bool = True) -> SyncResult:
         logger.warning("Sync failed for account %s: %s", account_id, error)
         return result
 
-    existing = servers_for_account(account_id)
     by_service_id = {server.service_id: server for server in existing if server.service_id}
     seen: set[str] = set()
 

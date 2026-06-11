@@ -45,6 +45,15 @@ LOCATION_TARIFF_KEYS = {
 }
 STANDARD_PERIODS = (7, 10, 14, 30, 60, 90, 180, 360, 720, 999)
 DEFAULT_RENT_PERIOD = 30
+_PERIOD_SKIP_KEYS = frozenset(
+    {
+        "days_remaining",
+        "days_left",
+        "days_until",
+        "days_until_expiry",
+        "days_to_finish",
+    }
+)
 
 VPS_STATUS_MAP = {
     "runned": "active",
@@ -95,13 +104,14 @@ class OneDashConnector:
         if not isinstance(balance.get("data"), dict):
             logger.info("OneDash balance response without data block.")
 
-    def list_services(self) -> list[RemoteService]:
+    def list_services(self, *, known_periods: dict[str, int] | None = None) -> list[RemoteService]:
         tariffs = _load_tariffs(self._request("tariffs"))
         payload = self._request("all-orders")
         orders = payload.get("data")
         if not isinstance(orders, list):
             return []
 
+        period_hints = known_periods or {}
         services: list[RemoteService] = []
         for order in orders:
             if not isinstance(order, dict):
@@ -115,7 +125,7 @@ class OneDashConnector:
                         order = {**order, **data}
                 except ConnectorError:
                     logger.debug("OneDash order-info failed for order %s", order_id)
-            services.extend(_services_from_order(order, tariffs))
+            services.extend(_services_from_order(order, tariffs, period_hints))
         return services
 
 
@@ -206,7 +216,8 @@ def _snap_period(days: int) -> int | None:
     if days in STANDARD_PERIODS:
         return days
     for period in STANDARD_PERIODS:
-        if abs(days - period) <= 2:
+        tolerance = max(2, period // 30)
+        if abs(days - period) <= tolerance:
             return period
     return None
 
@@ -223,14 +234,50 @@ def _epoch_from(raw: object) -> float | None:
 
 def _period_from_timestamps(order: dict[str, object]) -> int | None:
     finish_epoch = _epoch_from(order.get("finish_time"))
-    start_epoch = _epoch_from(order.get("start_time"))
-    if start_epoch is None:
-        start_epoch = _epoch_from(order.get("create_time"))
-    if start_epoch is None:
-        start_epoch = _epoch_from(order.get("created_at"))
+    start_epoch = None
+    for key in (
+        "start_time",
+        "create_time",
+        "created_at",
+        "begin_time",
+        "order_time",
+        "paid_at",
+        "start_at",
+        "opened_at",
+    ):
+        if start_epoch is None:
+            start_epoch = _epoch_from(order.get(key))
     if finish_epoch is None or start_epoch is None or finish_epoch <= start_epoch:
         return None
     return _snap_period(int(round((finish_epoch - start_epoch) / 86400)))
+
+
+def _scan_order_period(raw: object, *, depth: int = 0) -> int | None:
+    if depth > 5:
+        return None
+    if isinstance(raw, dict):
+        for key, value in raw.items():
+            key_l = str(key).lower()
+            if key_l in _PERIOD_SKIP_KEYS:
+                continue
+            if key_l in {"period", "now_days", "nowdays", "order_days", "rent_days", "pay_days", "rental_period"}:
+                period = _parse_period(value)
+                if period is not None:
+                    return period
+            if key_l.endswith("_days") and key_l not in _PERIOD_SKIP_KEYS:
+                period = _parse_period(value)
+                if period is not None:
+                    return period
+        for value in raw.values():
+            period = _scan_order_period(value, depth=depth + 1)
+            if period is not None:
+                return period
+    elif isinstance(raw, list):
+        for item in raw:
+            period = _scan_order_period(item, depth=depth + 1)
+            if period is not None:
+                return period
+    return None
 
 
 def _order_period(order: dict[str, object]) -> int | None:
@@ -261,11 +308,33 @@ def _order_period(order: dict[str, object]) -> int | None:
             period = _parse_period(finish.get(key))
             if period is not None:
                 return period
+    scanned = _scan_order_period(order)
+    if scanned is not None:
+        return scanned
     return _period_from_timestamps(order)
 
 
-def _resolve_order_period(order: dict[str, object]) -> int:
-    return _order_period(order) or DEFAULT_RENT_PERIOD
+def _resolve_order_period(order: dict[str, object], fallback_period: int | None = None) -> int:
+    period = _order_period(order)
+    if period is not None:
+        return period
+    if fallback_period is not None and fallback_period >= 7:
+        return fallback_period
+    return DEFAULT_RENT_PERIOD
+
+
+def _fallback_period_for_order(
+    order_id: str,
+    vps_id: str,
+    known_periods: dict[str, int],
+) -> int | None:
+    if order_id and vps_id:
+        service_id = f"{order_id}:{vps_id}"
+        if service_id in known_periods:
+            return known_periods[service_id]
+    if order_id and order_id in known_periods:
+        return known_periods[order_id]
+    return None
 
 
 def _parse_period(raw: object) -> int | None:
@@ -374,8 +443,10 @@ def _renewal_amount(
     tariffs: dict[int, dict[str, object]],
     tariff_id: int,
     location: str,
+    *,
+    fallback_period: int | None = None,
 ) -> tuple[float | None, int, str]:
-    period = _resolve_order_period(order)
+    period = _resolve_order_period(order, fallback_period)
     direct_amount, direct_period, direct_currency = _order_amount_from_payload(order)
     if direct_amount is not None:
         return direct_amount, direct_period or period, direct_currency
@@ -450,7 +521,12 @@ def _build_service_name(tariff_name: str, location: str, ip_address: str = "", o
     return title
 
 
-def _services_from_order(order: dict[str, object], tariffs: dict[int, dict[str, object]]) -> list[RemoteService]:
+def _services_from_order(
+    order: dict[str, object],
+    tariffs: dict[int, dict[str, object]],
+    known_periods: dict[str, int] | None = None,
+) -> list[RemoteService]:
+    period_hints = known_periods or {}
     order_id = str(order.get("order_id") or "").strip()
     tariff = order.get("tariff") if isinstance(order.get("tariff"), dict) else {}
     tariff_name = str(tariff.get("name") or "OneDash").strip()
@@ -462,11 +538,18 @@ def _services_from_order(order: dict[str, object], tariffs: dict[int, dict[str, 
     location_code = _location_code(location)
     finish_time = _parse_finish_date(order.get("finish_time"))
     next_payment_date = finish_time.date() if finish_time else None
-    amount, billing_period_days, currency = _renewal_amount(order, tariffs, tariff_id, location)
+    order_fallback = _fallback_period_for_order(order_id, "", period_hints)
 
     vps_list = order.get("vps_list")
     if not isinstance(vps_list, list) or not vps_list:
         if order_id:
+            amount, billing_period_days, currency = _renewal_amount(
+                order,
+                tariffs,
+                tariff_id,
+                location,
+                fallback_period=order_fallback,
+            )
             return [
                 RemoteService(
                     service_id=order_id,
@@ -492,6 +575,14 @@ def _services_from_order(order: dict[str, object], tariffs: dict[int, dict[str, 
         ip_address = str(vps.get("vps_ip") or "").strip()
         os_name = str(vps.get("os") or "").strip()
         status_raw = str(vps.get("vps_status") or "").strip().lower()
+        fallback_period = _fallback_period_for_order(order_id, vps_id, period_hints) or order_fallback
+        amount, billing_period_days, currency = _renewal_amount(
+            order,
+            tariffs,
+            tariff_id,
+            location,
+            fallback_period=fallback_period,
+        )
         services.append(
             RemoteService(
                 service_id=f"{order_id}:{vps_id}" if order_id else vps_id,
