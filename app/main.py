@@ -279,6 +279,7 @@ def dashboard(
             "onboarding": onboarding,
             "donation_url": DONATION_URL,
             "provider_templates": list_provider_templates(),
+            "catalog_countries": provider_countries(),
             "today": date.today(),
             "web_terminal_enabled": web_terminal_enabled(),
             "stats": {
@@ -687,36 +688,9 @@ def calendar_ics() -> Response:
     )
 
 
-@app.get("/providers", response_class=HTMLResponse)
-def providers_page(request: Request, country: str = "") -> HTMLResponse:
-    providers = list_provider_templates()
-    selected_country = country.strip().upper()
-    filtered_providers = [
-        provider
-        for provider in providers
-        if not selected_country or selected_country in provider.get("countries", [])
-    ]
-    countries = provider_countries(providers)
-    selected_country_name = next(
-        (item["name"] for item in countries if item["code"] == selected_country),
-        "",
-    )
-    accounts = list_accounts()
-    return templates.TemplateResponse(
-        "providers.html",
-        {
-            "request": request,
-            "providers": filtered_providers,
-            "all_providers": providers,
-            "countries": countries,
-            "selected_country": selected_country,
-            "selected_country_name": selected_country_name,
-            "accounts": accounts,
-            "account_options": account_form_options(accounts),
-            "provider_templates": providers,
-            "donation_url": DONATION_URL,
-        },
-    )
+@app.get("/providers")
+def providers_page() -> RedirectResponse:
+    return RedirectResponse("/?add=server", status_code=302)
 
 
 @app.get("/settings", response_class=HTMLResponse)

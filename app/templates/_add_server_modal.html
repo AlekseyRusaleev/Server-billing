@@ -1,0 +1,188 @@
+<dialog id="add-server" class="modal modal-catalog">
+  <form method="post" action="/servers" id="add-server-form">
+    <div class="modal-head">
+      <div>
+        <h2 id="add-server-title">Новый сервер</h2>
+        <p class="modal-subtitle" id="add-server-subtitle">Выберите хостера из каталога или заполните форму вручную</p>
+      </div>
+      <button type="button" class="plain" data-close-modal>×</button>
+    </div>
+
+    <section class="catalog-step" data-step="catalog">
+      <label class="catalog-search-label">
+        Поиск
+        <input type="search" id="catalog-search" placeholder="Hetzner, onlinevds, RUB…" autocomplete="off">
+      </label>
+      <div class="country-grid catalog-countries" id="catalog-countries">
+        <button type="button" class="country-chip active" data-country="">🌍 Все</button>
+        {% for country in catalog_countries %}
+        <button type="button" class="country-chip" data-country="{{ country.code }}">{{ country.flag }} {{ country.name }}</button>
+        {% endfor %}
+      </div>
+      <div class="catalog-grid" id="catalog-grid">
+        {% for item in provider_templates %}
+        <button
+          type="button"
+          class="catalog-card"
+          data-index="{{ loop.index0 }}"
+          data-countries="{{ item.countries|join(',') }}"
+          data-search="{{ (item.name ~ ' ' ~ item.domain ~ ' ' ~ (item.default_currency or ''))|lower }}"
+        >
+          <span class="catalog-card-domain">{{ item.domain }}</span>
+          <strong>{{ item.name }}</strong>
+          <span class="catalog-card-meta">{{ item.price_hint }} · {{ item.default_currency }}</span>
+          {% if item.country_labels %}
+          <span class="catalog-card-flags">
+            {% for country in item.country_labels[:4] %}{{ country.flag }}{% endfor %}
+          </span>
+          {% endif %}
+        </button>
+        {% endfor %}
+      </div>
+      <p class="catalog-empty muted hidden" id="catalog-empty">Ничего не найдено. Попробуйте другой запрос или добавьте сервер вручную.</p>
+      <div class="catalog-footer">
+        <button type="button" class="secondary" data-manual-entry>Заполнить вручную</button>
+        <span class="muted">{{ provider_templates|length }} шаблонов</span>
+      </div>
+    </section>
+
+    <section class="form-step hidden" data-step="form">
+      <button type="button" class="link-button catalog-back" data-back-catalog>← К каталогу</button>
+      <p class="catalog-selected hidden" id="catalog-selected"></p>
+      {% set server = none %}
+      {% include "_form.html" %}
+      <div class="form-actions">
+        <button type="button" class="secondary" data-close-modal>Отмена</button>
+        <button class="primary" type="submit">Сохранить</button>
+      </div>
+    </section>
+  </form>
+</dialog>
+
+<script>
+  (() => {
+    const modal = document.querySelector("#add-server");
+    if (!modal) return;
+
+    const templates = {{ provider_templates|tojson }};
+    const catalogStep = modal.querySelector('[data-step="catalog"]');
+    const formStep = modal.querySelector('[data-step="form"]');
+    const searchInput = modal.querySelector("#catalog-search");
+    const countryButtons = modal.querySelectorAll("#catalog-countries [data-country]");
+    const cards = modal.querySelectorAll(".catalog-card");
+    const emptyState = modal.querySelector("#catalog-empty");
+    const selectedLabel = modal.querySelector("#catalog-selected");
+    const subtitle = modal.querySelector("#add-server-subtitle");
+    let activeCountry = "";
+
+    const setValue = (selector, value, overwrite = false) => {
+      const field = modal.querySelector(selector);
+      if (!field || value === undefined || value === null || value === "") return;
+      if (overwrite || !field.value) field.value = value;
+    };
+
+    const showStep = (step) => {
+      const isCatalog = step === "catalog";
+      catalogStep.classList.toggle("hidden", !isCatalog);
+      formStep.classList.toggle("hidden", isCatalog);
+      subtitle.textContent = isCatalog
+        ? "Выберите хостера из каталога или заполните форму вручную"
+        : "Проверьте поля и сохраните сервер";
+    };
+
+    const resetForm = () => {
+      modal.querySelector("#add-server-form")?.reset();
+      selectedLabel.classList.add("hidden");
+      selectedLabel.textContent = "";
+    };
+
+    const openCatalog = () => {
+      showStep("catalog");
+      searchInput.value = "";
+      activeCountry = "";
+      countryButtons.forEach((button) => {
+        button.classList.toggle("active", button.dataset.country === "");
+      });
+      filterCatalog();
+    };
+
+    const applyTemplate = (item, countryName = "") => {
+      setValue("#server-provider", item.domain || item.name, true);
+      setValue("#server-panel-url", item.panel_url, true);
+      setValue("#server-payment-url", item.payment_url || item.panel_url, true);
+      setValue("#server-period", item.billing_period_days, true);
+      setValue("#server-currency", item.default_currency, true);
+      if (countryName) setValue("#server-location", countryName, true);
+      const notes = [item.service_hint, item.notes].filter(Boolean).join("\n");
+      setValue("#server-notes", notes, true);
+      selectedLabel.textContent = `Шаблон: ${item.name} · ${item.domain}`;
+      selectedLabel.classList.remove("hidden");
+    };
+
+    const filterCatalog = () => {
+      const query = (searchInput?.value || "").trim().toLowerCase();
+      let visible = 0;
+      cards.forEach((card) => {
+        const matchesCountry = !activeCountry || (card.dataset.countries || "").split(",").includes(activeCountry);
+        const matchesSearch = !query || (card.dataset.search || "").includes(query);
+        const show = matchesCountry && matchesSearch;
+        card.classList.toggle("hidden", !show);
+        if (show) visible += 1;
+      });
+      emptyState?.classList.toggle("hidden", visible > 0);
+    };
+
+    const openForm = (templateIndex = null, countryName = "") => {
+      resetForm();
+      if (templateIndex !== null) {
+        applyTemplate(templates[templateIndex], countryName);
+      }
+      showStep("form");
+    };
+
+    countryButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        activeCountry = button.dataset.country || "";
+        countryButtons.forEach((item) => item.classList.toggle("active", item === button));
+        filterCatalog();
+      });
+    });
+
+    searchInput?.addEventListener("input", filterCatalog);
+
+    cards.forEach((card) => {
+      card.addEventListener("click", () => {
+        const countryChip = modal.querySelector("#catalog-countries .country-chip.active");
+        const countryName = countryChip && countryChip.dataset.country
+          ? countryChip.textContent.replace(/^[^\s]+\s*/, "").trim()
+          : "";
+        openForm(Number(card.dataset.index), countryName);
+      });
+    });
+
+    modal.querySelector("[data-manual-entry]")?.addEventListener("click", () => openForm());
+    modal.querySelector("[data-back-catalog]")?.addEventListener("click", openCatalog);
+    modal.querySelectorAll("[data-close-modal]").forEach((button) => {
+      button.addEventListener("click", () => {
+        modal.close();
+        openCatalog();
+        resetForm();
+      });
+    });
+
+    modal.addEventListener("close", () => {
+      openCatalog();
+      resetForm();
+    });
+
+    if (new URLSearchParams(window.location.search).get("add") === "server") {
+      modal.showModal();
+      history.replaceState({}, "", window.location.pathname);
+    }
+
+    window.openAddServerModal = () => {
+      openCatalog();
+      modal.showModal();
+    };
+  })();
+</script>
