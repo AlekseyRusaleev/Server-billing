@@ -30,9 +30,9 @@
       .replaceAll(">", "&gt;")
       .replaceAll('"', "&quot;");
 
-  const flagImg = (country, className = "market-flag-img") => {
+  const flagImg = (country, className = "market-flag-img", size = { width: 16, height: 12 }) => {
     if (!country?.flag_url) return "";
-    return `<img class="${className}" src="${escapeHtml(country.flag_url)}" alt="${escapeHtml(country.name || country.code)}" title="${escapeHtml(country.name || country.code)}" width="16" height="12" loading="lazy">`;
+    return `<img class="${className}" src="${escapeHtml(country.flag_url)}" alt="${escapeHtml(country.name || country.code)}" title="${escapeHtml(country.name || country.code)}" width="${size.width}" height="${size.height}" loading="lazy">`;
   };
 
   window.initProvidersMarket = (config) => {
@@ -288,10 +288,10 @@
     };
 
     countryScroll.innerHTML = [
-      `<button type="button" class="market-country active" data-country="" title="Все страны"><img class="market-flag-img market-flag-img-all" src="/static/flags/world.svg" alt="Все" width="16" height="12"></button>`,
+      `<button type="button" class="market-country active" data-country="" title="Все страны"><img class="market-flag-img market-flag-img-all" src="/static/flags/world.svg" alt="Все" width="14" height="10"></button>`,
       ...countries.map(
         (country) =>
-          `<button type="button" class="market-country" data-country="${escapeHtml(country.code)}" title="${escapeHtml(country.name)}">${flagImg(country)}<span class="market-country-code">${escapeHtml(country.code)}</span></button>`,
+          `<button type="button" class="market-country" data-country="${escapeHtml(country.code)}" title="${escapeHtml(country.name)}">${flagImg(country, "market-flag-img", { width: 14, height: 10 })}<span class="market-country-code">${escapeHtml(country.code)}</span></button>`,
       ),
     ].join("");
 

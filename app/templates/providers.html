@@ -30,59 +30,44 @@
 <section class="panel market-panel">
   <div class="market-toolbar">
     <div class="market-countries-scroll" id="market-countries"></div>
-    <label class="market-search wide">
-      <span class="sr-only">Поиск провайдера</span>
-      <input type="search" id="market-search" placeholder="Поиск по названию или домену…" autocomplete="off">
-    </label>
-    <div class="market-filters-grid">
-      <label>
-        Цена от
-        <input type="number" id="market-filter-price-min" min="0" step="0.01" placeholder="0">
+    <div class="market-filters-bar">
+      <label class="market-search">
+        <span class="sr-only">Поиск провайдера</span>
+        <input type="search" id="market-search" placeholder="Поиск…" autocomplete="off">
       </label>
-      <label>
-        Цена до
-        <input type="number" id="market-filter-price-max" min="0" step="0.01" placeholder="∞">
-      </label>
-      <label>
-        Валюта
-        <select id="market-filter-currency">
-          <option value="">Любая</option>
+      <div class="market-filter-group">
+        <span class="market-filter-group-title">Цена</span>
+        <input type="number" id="market-filter-price-min" min="0" step="0.01" placeholder="от" aria-label="Цена от">
+        <input type="number" id="market-filter-price-max" min="0" step="0.01" placeholder="до" aria-label="Цена до">
+        <select id="market-filter-currency" aria-label="Валюта">
+          <option value="">—</option>
           <option value="RUB">RUB</option>
           <option value="USD">USD</option>
           <option value="EUR">EUR</option>
         </select>
-      </label>
-      <label>
-        RAM от, GB
-        <input type="number" id="market-filter-ram-min" min="0" step="0.5" placeholder="0">
-      </label>
-      <label>
-        RAM до, GB
-        <input type="number" id="market-filter-ram-max" min="0" step="0.5" placeholder="∞">
-      </label>
-      <label>
-        CPU от
-        <input type="number" id="market-filter-cpu-min" min="0" step="1" placeholder="0">
-      </label>
-      <label>
-        CPU до
-        <input type="number" id="market-filter-cpu-max" min="0" step="1" placeholder="∞">
-      </label>
-      <label>
-        Трафик от, TB
-        <input type="number" id="market-filter-traffic-min" min="0" step="0.1" placeholder="0">
-      </label>
-      <label>
-        Трафик до, TB
-        <input type="number" id="market-filter-traffic-max" min="0" step="0.1" placeholder="∞">
-      </label>
+      </div>
+      <div class="market-filter-group">
+        <span class="market-filter-group-title">RAM</span>
+        <input type="number" id="market-filter-ram-min" min="0" step="0.5" placeholder="от" aria-label="RAM от, GB">
+        <input type="number" id="market-filter-ram-max" min="0" step="0.5" placeholder="до" aria-label="RAM до, GB">
+        <span class="market-filter-unit">GB</span>
+      </div>
+      <div class="market-filter-group">
+        <span class="market-filter-group-title">CPU</span>
+        <input type="number" id="market-filter-cpu-min" min="0" step="1" placeholder="от" aria-label="CPU от">
+        <input type="number" id="market-filter-cpu-max" min="0" step="1" placeholder="до" aria-label="CPU до">
+      </div>
+      <div class="market-filter-group">
+        <span class="market-filter-group-title">Трафик</span>
+        <input type="number" id="market-filter-traffic-min" min="0" step="0.1" placeholder="от" aria-label="Трафик от, TB">
+        <input type="number" id="market-filter-traffic-max" min="0" step="0.1" placeholder="до" aria-label="Трафик до, TB">
+        <span class="market-filter-unit">TB</span>
+      </div>
       <label class="market-filter-check">
         <input type="checkbox" id="market-filter-api">
-        С API docs
+        API docs
       </label>
-      <div class="market-filter-actions">
-        <button type="button" class="link-button" id="market-filter-reset">Сброс фильтров</button>
-      </div>
+      <button type="button" class="link-button market-filter-reset" id="market-filter-reset">Сброс</button>
     </div>
   </div>
 
