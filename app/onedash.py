@@ -138,21 +138,41 @@ def _normalize_location(location: str) -> str:
     return LOCATION_ALIASES.get(key, key)
 
 
-def _location_prices(tariff: dict[str, object], location: str) -> list[dict[str, object]]:
-    loc = _normalize_location(location)
-    direct_key = f"{loc}_prices"
-    prices = tariff.get(direct_key)
+def _price_bucket(prices: object, currency: str = "RUB") -> list[dict[str, object]]:
+    """OneDash отдаёт цены списком или словарём локалей (ru/en/eu)."""
     if isinstance(prices, list):
         return [row for row in prices if isinstance(row, dict)]
+    if isinstance(prices, dict):
+        currency_key = currency.strip().lower()
+        for key in (currency_key, "ru", "rub", "en", "eu"):
+            bucket = prices.get(key)
+            if isinstance(bucket, list):
+                return [row for row in bucket if isinstance(row, dict)]
+        for value in prices.values():
+            if isinstance(value, list):
+                return [row for row in value if isinstance(row, dict)]
+    return []
+
+
+def _location_prices(tariff: dict[str, object], location: str) -> list[dict[str, object]]:
+    loc = _normalize_location(location)
+    currency = str(tariff.get("currency") or "RUB")
+    direct_key = f"{loc}_prices"
+    direct = tariff.get(direct_key)
+    if direct is not None:
+        bucket = _price_bucket(direct, currency)
+        if bucket:
+            return bucket
 
     for key, value in tariff.items():
         if not isinstance(key, str) or not key.endswith("_prices"):
             continue
-        if not isinstance(value, list):
-            continue
         prefix = key[: -len("_prices")]
-        if prefix == loc:
-            return [row for row in value if isinstance(row, dict)]
+        if prefix != loc:
+            continue
+        bucket = _price_bucket(value, currency)
+        if bucket:
+            return bucket
     return []
 
 
@@ -177,20 +197,53 @@ def _parse_amount(raw: object) -> float | None:
 
 
 def _order_period(order: dict[str, object]) -> int | None:
-    for key in ("period", "rent_period", "billing_period", "renew_period"):
+    for key in ("period", "rent_period", "billing_period", "renew_period", "pay_period"):
         period = _parse_period(order.get(key))
         if period is not None:
             return period
+    for nested_key in ("payment", "renew", "billing", "price_info"):
+        nested = order.get(nested_key)
+        if isinstance(nested, dict):
+            for key in ("period", "rent_period", "billing_period", "renew_period"):
+                period = _parse_period(nested.get(key))
+                if period is not None:
+                    return period
+    finish = order.get("finish_time")
+    if isinstance(finish, dict):
+        for key in ("period", "rent_period", "billing_period"):
+            period = _parse_period(finish.get(key))
+            if period is not None:
+                return period
     return None
 
 
 def _order_amount_from_payload(order: dict[str, object]) -> tuple[float | None, int | None, str]:
     currency = str(order.get("currency") or "RUB")
     period = _order_period(order)
-    for key in ("renew_price", "renewal_price", "price", "amount", "payment_amount", "summ"):
+    for key in (
+        "renew_price",
+        "renewal_price",
+        "next_payment",
+        "next_payment_price",
+        "price",
+        "amount",
+        "payment_amount",
+        "summ",
+        "sum",
+    ):
         amount = _parse_amount(order.get(key))
         if amount is not None:
             return amount, period, currency
+    for nested_key in ("payment", "renew", "billing", "price_info"):
+        nested = order.get(nested_key)
+        if not isinstance(nested, dict):
+            continue
+        nested_currency = str(nested.get("currency") or currency)
+        nested_period = _order_period(nested) or period
+        for key in ("renew_price", "renewal_price", "price", "amount", "payment_amount", "summ", "sum"):
+            amount = _parse_amount(nested.get(key))
+            if amount is not None:
+                return amount, nested_period, nested_currency
     return None, period, currency
 
 
@@ -236,7 +289,7 @@ def _renewal_amount(
             if period == preferred_period:
                 return price, period, currency
 
-    for target in (30, 14, 10, 7):
+    for target in (7, 10, 14, 30, 60, 90, 180, 360):
         for period, price in prices:
             if period == target:
                 return price, period, currency

@@ -107,7 +107,13 @@ def _diff_fields(
     notes: list[str] = []
     if service.next_payment_date and service.next_payment_date != server.next_payment_date:
         fields["next_payment_date"] = service.next_payment_date.isoformat()
-    if service.amount is not None and abs(service.amount - server.amount) > 0.001:
+    if account.integration_type == "onedash":
+        if service.amount is not None and (
+            server.amount <= 0 or abs(service.amount - server.amount) > 0.001
+        ):
+            fields["amount"] = service.amount
+            notes.append(f"{server.name}: сумма {server.amount:g} -> {service.amount:g}")
+    elif service.amount is not None and abs(service.amount - server.amount) > 0.001:
         fields["amount"] = service.amount
         notes.append(f"{server.name}: сумма {server.amount:g} -> {service.amount:g}")
     if (
