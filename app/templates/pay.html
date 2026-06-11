@@ -70,7 +70,7 @@
       <form method="post" action="/servers/{{ server.id }}/payments" class="manual-payment-form">
         <p class="muted">Добавить прошлую оплату вручную (для статистики, без сдвига даты следующей оплаты).</p>
         <div class="manual-payment-grid">
-          <input type="text" name="paid_at" placeholder="дд.мм.гггг" inputmode="numeric" pattern="\d{2}[\.\-/]\d{2}[\.\-/]\d{4}" required>
+          <input type="date" name="paid_at" required>
           <input type="number" step="0.01" min="0" name="amount" value="{{ '%g'|format(server.amount) }}" placeholder="Сумма">
           <select name="currency">
             {% for code in ["RUB", "USD", "EUR", "USDT"] %}
