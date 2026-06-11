@@ -22,7 +22,8 @@
   </label>
   <label>
     Пароль / секрет
-    <input type="password" name="auth_secret" value="{{ account.auth_secret if account else '' }}" autocomplete="new-password" placeholder="пароль, API-ключ или заметка">
+    <input type="password" name="auth_secret" value="" autocomplete="new-password" placeholder="{{ 'сохранён, оставьте пустым чтобы не менять' if account and account.auth_secret else 'пароль, API-ключ или заметка' }}">
+    {% if account and account.auth_secret %}<small class="muted">Секрет сохранён и скрыт. Введите новый, чтобы изменить.</small>{% endif %}
   </label>
   <label class="wide">
     Ссылка на личный кабинет

@@ -41,11 +41,16 @@
   </label>
   <label>
     Пароль сервера
-    <input type="password" name="server_password" value="{{ server.server_password if server else '' }}" autocomplete="new-password" placeholder="пароль от сервера">
+    <input type="password" name="server_password" value="" autocomplete="new-password" placeholder="{{ 'сохранён, оставьте пустым чтобы не менять' if server and server.server_password else 'пароль от сервера' }}">
+    {% if server and server.server_password %}<small class="muted">Пароль сохранён и скрыт. Введите новый, чтобы изменить.</small>{% endif %}
   </label>
   <label>
     SSH порт
     <input type="number" min="1" max="65535" name="ssh_port" value="{{ server.ssh_port if server else '22' }}" placeholder="22">
+  </label>
+  <label>
+    Домен для проверки SSL
+    <input name="ssl_host" value="{{ server.ssl_host if server else '' }}" placeholder="example.com (необязательно)">
   </label>
   <label>
     ID услуги

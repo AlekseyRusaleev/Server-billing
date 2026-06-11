@@ -12,12 +12,16 @@ from app.config import settings
 from app.db import connect, database_path
 from app.models import Server
 from app.repository import (
+    get_app_setting,
     get_last_backup_at,
     list_servers,
     mark_backup_sent,
+    mark_ssl_alert_sent,
     notification_settings,
+    ssl_alert_already_sent,
 )
 from app.provider_sync import SyncResult, sync_due_accounts
+from app.sslcheck import SslResult, run_all as run_ssl_checks
 from app.telegram import build_payment_deeplink
 
 logger = logging.getLogger(__name__)
@@ -238,6 +242,49 @@ def run_provider_sync() -> int:
     return notified
 
 
+def ssl_alert_threshold() -> int:
+    try:
+        return int(get_app_setting("ssl_alert_days", "3") or 3)
+    except ValueError:
+        return 3
+
+
+def build_ssl_message(result: SslResult) -> str:
+    if result.days_left is not None and result.days_left < 0:
+        state = f"истёк {-result.days_left} дн. назад"
+    elif result.days_left == 0:
+        state = "истекает сегодня"
+    else:
+        state = f"осталось {result.days_left} дн."
+    return (
+        "SSL-сертификат скоро истекает\n\n"
+        f"{result.label}\n"
+        f"Домен: {result.host}:{result.port}\n"
+        f"Действует до: {result.expiry}\n"
+        f"Статус: {state}"
+    )
+
+
+def check_ssl_certificates() -> int:
+    """Проверяет SSL-сертификаты целей и шлёт уведомления при скором истечении."""
+    threshold = ssl_alert_threshold()
+    today = date.today().isoformat()
+    sent = 0
+    for result in run_ssl_checks():
+        if not result.ok or result.days_left is None or result.days_left > threshold:
+            continue
+        alert_key = f"{result.expiry}:{today}"
+        if ssl_alert_already_sent(result.host, alert_key):
+            continue
+        try:
+            if send_telegram(build_ssl_message(result)):
+                mark_ssl_alert_sent(result.host, alert_key)
+                sent += 1
+        except Exception:
+            logger.exception("Failed to send SSL alert for %s", result.host)
+    return sent
+
+
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     logger.info("Reminder worker started.")
@@ -245,11 +292,13 @@ def main() -> None:
         try:
             synced = run_provider_sync()
             sent = send_due_reminders()
+            ssl_alerts = check_ssl_certificates()
             backup_sent = send_due_backup()
             logger.info(
-                "Check finished. Synced accounts notified: %s. Reminders sent: %s. Backup sent: %s. Date: %s",
+                "Check finished. Synced accounts notified: %s. Reminders sent: %s. SSL alerts: %s. Backup sent: %s. Date: %s",
                 synced,
                 sent,
+                ssl_alerts,
                 backup_sent,
                 date.today(),
             )

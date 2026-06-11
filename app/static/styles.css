@@ -1304,3 +1304,48 @@ td strong {
   box-sizing: border-box;
   overflow: hidden;
 }
+
+.secret-box > summary {
+  cursor: pointer;
+  font-weight: 700;
+  list-style: none;
+}
+
+.secret-box > summary::-webkit-details-marker {
+  display: none;
+}
+
+.secret-value {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  word-break: break-all;
+}
+
+.manual-payment-form {
+  margin: 6px 0 14px;
+}
+
+.manual-payment-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.manual-payment-grid input,
+.manual-payment-grid select {
+  flex: 1 1 120px;
+  min-width: 110px;
+}
+
+.manual-payment-grid input[name="note"] {
+  flex: 2 1 180px;
+}
+
+.manual-payment-grid button {
+  flex: 0 0 auto;
+}
+
+.danger-text {
+  color: var(--red);
+  font-size: 12px;
+}

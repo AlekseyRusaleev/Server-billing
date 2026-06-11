@@ -50,23 +50,37 @@
       <a class="secondary-link" href="{{ telegram_share_url }}" target="_blank" rel="noreferrer">Текст для Telegram</a>
     </div>
     {% if server.server_login or server.server_password or server.account_name or server.account_login or server.account_secret %}
-    <section class="auth-box">
-      <h2>Данные входа</h2>
+    <details class="auth-box secret-box">
+      <summary>Данные входа <small class="muted">(нажмите, чтобы показать)</small></summary>
       <dl>
         <div><dt>Логин сервера</dt><dd>{{ server.server_login or "не указан" }}</dd></div>
-        <div><dt>Пароль сервера</dt><dd>{{ server.server_password or "не указан" }}</dd></div>
+        <div><dt>Пароль сервера</dt><dd>{% if server.server_password %}<span class="secret-value">{{ server.server_password }}</span>{% else %}не указан{% endif %}</dd></div>
         <div><dt>Аккаунт</dt><dd>{{ server.account_name or "не привязан" }}</dd></div>
         <div><dt>Логин</dt><dd>{{ server.account_login or "не указан" }}</dd></div>
-        <div><dt>Секрет</dt><dd>{{ server.account_secret or "не указан" }}</dd></div>
+        <div><dt>Секрет</dt><dd>{% if server.account_secret %}<span class="secret-value">{{ server.account_secret }}</span>{% else %}не указан{% endif %}</dd></div>
         <div><dt>Кабинет</dt><dd>{{ server.effective_panel_url or "не указан" }}</dd></div>
       </dl>
-    </section>
+    </details>
     {% endif %}
     <section class="auth-box">
       <div class="panel-head">
         <h2>История оплат</h2>
         <span>{{ history|length }}</span>
       </div>
+      <form method="post" action="/servers/{{ server.id }}/payments" class="manual-payment-form">
+        <p class="muted">Добавить прошлую оплату вручную (для статистики, без сдвига даты следующей оплаты).</p>
+        <div class="manual-payment-grid">
+          <input type="text" name="paid_at" placeholder="дд.мм.гггг" inputmode="numeric" pattern="\d{2}[\.\-/]\d{2}[\.\-/]\d{4}" required>
+          <input type="number" step="0.01" min="0" name="amount" value="{{ '%g'|format(server.amount) }}" placeholder="Сумма">
+          <select name="currency">
+            {% for code in ["RUB", "USD", "EUR", "USDT"] %}
+            <option value="{{ code }}" {% if server.currency == code %}selected{% endif %}>{{ code }}</option>
+            {% endfor %}
+          </select>
+          <input name="note" placeholder="Комментарий">
+          <button class="secondary" type="submit">Добавить оплату</button>
+        </div>
+      </form>
       <div class="history-list">
         {% for item in history %}
         <div class="history-item">
@@ -74,6 +88,9 @@
           <span>{{ "%g"|format(item.amount) }} {{ item.currency }}</span>
           <small>{{ item.previous_next_payment_date.strftime("%d.%m.%Y") }} → {{ item.next_payment_date.strftime("%d.%m.%Y") }}</small>
           {% if item.note %}<p>{{ item.note }}</p>{% endif %}
+          <form method="post" action="/servers/{{ server.id }}/payments/{{ item.id }}/delete" onsubmit="return confirm('Удалить запись об оплате?')">
+            <button class="link-button danger-text" type="submit" title="Удалить запись">Удалить</button>
+          </form>
         </div>
         {% else %}
         <p class="muted">Оплат пока не отмечали.</p>

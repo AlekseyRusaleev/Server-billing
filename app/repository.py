@@ -159,8 +159,8 @@ def create_server(data: dict[str, object]) -> int:
             INSERT INTO servers (
                 hosting_account_id, name, provider, ip_address, location, server_login,
                 server_password, ssh_port, service_id, amount, currency, billing_period_days,
-                next_payment_date, payment_url, panel_url, notes, sync_locked
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                next_payment_date, payment_url, panel_url, notes, sync_locked, ssl_host
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 data.get("hosting_account_id"),
@@ -180,6 +180,7 @@ def create_server(data: dict[str, object]) -> int:
                 data.get("panel_url", ""),
                 data.get("notes", ""),
                 1 if data.get("sync_locked") else 0,
+                data.get("ssl_host", ""),
             ),
         )
         return int(cursor.lastrowid)
@@ -193,7 +194,7 @@ def update_server(server_id: int, data: dict[str, object]) -> None:
             SET hosting_account_id = ?, name = ?, provider = ?, ip_address = ?, location = ?,
                 server_login = ?, server_password = ?, ssh_port = ?, service_id = ?, amount = ?, currency = ?,
                 billing_period_days = ?, next_payment_date = ?, payment_url = ?, panel_url = ?, notes = ?,
-                sync_locked = ?
+                sync_locked = ?, ssl_host = ?
             WHERE id = ?
             """,
             (
@@ -214,6 +215,7 @@ def update_server(server_id: int, data: dict[str, object]) -> None:
                 data.get("panel_url", ""),
                 data.get("notes", ""),
                 1 if data.get("sync_locked") else 0,
+                data.get("ssl_host", ""),
                 server_id,
             ),
         )
@@ -283,6 +285,59 @@ def list_auto_sync_accounts() -> list[HostingAccount]:
     ]
 
 
+def list_ssl_monitors() -> list[dict[str, object]]:
+    with connect() as connection:
+        rows = connection.execute(
+            "SELECT * FROM ssl_monitors ORDER BY host ASC"
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def create_ssl_monitor(host: str, port: int = 443, label: str = "") -> int:
+    with connect() as connection:
+        cursor = connection.execute(
+            "INSERT INTO ssl_monitors (host, port, label) VALUES (?, ?, ?)",
+            (host.strip(), int(port or 443), label.strip()),
+        )
+        return int(cursor.lastrowid)
+
+
+def delete_ssl_monitor(monitor_id: int) -> None:
+    with connect() as connection:
+        connection.execute("DELETE FROM ssl_monitors WHERE id = ?", (monitor_id,))
+
+
+def set_ssl_monitor_status(
+    monitor_id: int, status: str, days_left: int | None, expiry: str
+) -> None:
+    with connect() as connection:
+        connection.execute(
+            """
+            UPDATE ssl_monitors
+            SET last_status = ?, last_days_left = ?, last_expiry = ?, last_checked_at = ?
+            WHERE id = ?
+            """,
+            (status, days_left, expiry, datetime.now().strftime("%Y-%m-%d %H:%M"), monitor_id),
+        )
+
+
+def ssl_alert_already_sent(host: str, alert_key: str) -> bool:
+    with connect() as connection:
+        row = connection.execute(
+            "SELECT id FROM ssl_notification_log WHERE host = ? AND alert_key = ?",
+            (host, alert_key),
+        ).fetchone()
+    return row is not None
+
+
+def mark_ssl_alert_sent(host: str, alert_key: str) -> None:
+    with connect() as connection:
+        connection.execute(
+            "INSERT OR IGNORE INTO ssl_notification_log (host, alert_key) VALUES (?, ?)",
+            (host, alert_key),
+        )
+
+
 def mark_paid(server_id: int, note: str = "") -> None:
     server = get_server(server_id)
     if server is None:
@@ -316,6 +371,46 @@ def mark_paid(server_id: int, note: str = "") -> None:
             """,
             (next_date.isoformat(), date.today().isoformat(), server_id),
         )
+
+
+def add_manual_payment(
+    server_id: int,
+    paid_at: str,
+    amount: float,
+    currency: str = "",
+    note: str = "",
+) -> bool:
+    """Добавляет историческую оплату вручную, не меняя график следующей оплаты."""
+    server = get_server(server_id)
+    if server is None:
+        return False
+    normalized_currency = (currency or "").strip().upper() or server.currency
+    with connect() as connection:
+        connection.execute(
+            """
+            INSERT INTO payment_history (
+                server_id, server_name, provider, amount, currency, paid_at,
+                previous_next_payment_date, next_payment_date, note
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                server.id,
+                server.name,
+                server.provider,
+                float(amount or 0),
+                normalized_currency,
+                paid_at,
+                paid_at,
+                paid_at,
+                note.strip(),
+            ),
+        )
+    return True
+
+
+def delete_payment(payment_id: int) -> None:
+    with connect() as connection:
+        connection.execute("DELETE FROM payment_history WHERE id = ?", (payment_id,))
 
 
 def list_payment_history(server_id: int | None = None) -> list[PaymentHistoryItem]:

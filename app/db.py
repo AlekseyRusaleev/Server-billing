@@ -52,7 +52,28 @@ CREATE TABLE IF NOT EXISTS servers (
     last_paid_at TEXT DEFAULT '',
     sync_locked INTEGER NOT NULL DEFAULT 0,
     external_synced_at TEXT DEFAULT '',
+    ssl_host TEXT DEFAULT '',
     FOREIGN KEY (hosting_account_id) REFERENCES hosting_accounts(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS ssl_monitors (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    host TEXT NOT NULL,
+    port INTEGER NOT NULL DEFAULT 443,
+    label TEXT DEFAULT '',
+    last_status TEXT DEFAULT '',
+    last_days_left INTEGER DEFAULT NULL,
+    last_expiry TEXT DEFAULT '',
+    last_checked_at TEXT DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS ssl_notification_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    host TEXT NOT NULL,
+    alert_key TEXT NOT NULL,
+    sent_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(host, alert_key)
 );
 
 CREATE TABLE IF NOT EXISTS payment_history (
@@ -127,6 +148,7 @@ def init_db() -> None:
         ensure_column(connection, "hosting_accounts", "last_sync_message", "TEXT DEFAULT ''")
         ensure_column(connection, "servers", "sync_locked", "INTEGER NOT NULL DEFAULT 0")
         ensure_column(connection, "servers", "external_synced_at", "TEXT DEFAULT ''")
+        ensure_column(connection, "servers", "ssl_host", "TEXT DEFAULT ''")
 
 
 @contextmanager

@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="eyebrow">Мониторинг</p>
+    <h1>SSL-сертификаты</h1>
+  </div>
+  <a class="secondary-link" href="/ssl">Обновить</a>
+</section>
+
+{% if saved %}
+<div class="notice success">Настройки сохранены.</div>
+{% endif %}
+
+<section class="panel">
+  <div class="panel-head">
+    <h2>Состояние сертификатов</h2>
+    <span>{{ results|length }}</span>
+  </div>
+  <p class="muted">
+    Проверяются домены серверов (поле «Домен для проверки SSL») и отдельный список ниже.
+    Уведомление в Telegram приходит, когда до конца сертификата остаётся {{ threshold }} дн. или меньше.
+  </p>
+  <div class="table-wrap">
+    <table class="server-table">
+      <thead>
+        <tr>
+          <th>Цель</th>
+          <th>Домен</th>
+          <th>Источник</th>
+          <th>Действует до</th>
+          <th>Осталось</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in results %}
+        <tr>
+          <td data-label="Цель"><strong>{{ item.label }}</strong></td>
+          <td data-label="Домен">{{ item.host }}:{{ item.port }}</td>
+          <td data-label="Источник">{{ "сервер" if item.source == "server" else "список" }}</td>
+          <td data-label="Действует до">{{ item.expiry or "—" }}</td>
+          <td data-label="Осталось">
+            {% if not item.ok %}
+              <span class="badge overdue">ошибка</span>
+            {% elif item.days_left < 0 %}
+              <span class="badge overdue">истёк</span>
+            {% elif item.days_left <= threshold %}
+              <span class="badge urgent">{{ item.days_left }} дн.</span>
+            {% elif item.days_left <= 14 %}
+              <span class="badge soon">{{ item.days_left }} дн.</span>
+            {% else %}
+              <span class="badge ok">{{ item.days_left }} дн.</span>
+            {% endif %}
+          </td>
+          <td class="actions" data-label="">
+            {% if item.source == "monitor" %}
+            <form method="post" action="/ssl/{{ item.monitor_id }}/delete" onsubmit="return confirm('Убрать домен из мониторинга?')">
+              <button class="link-button danger-text" type="submit">Удалить</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="empty">Нет целей для проверки. Добавьте домен ниже или укажите его в карточке сервера.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% for item in results if not item.ok and item.error %}
+  <p class="sync-status error">{{ item.host }}: {{ item.error }}</p>
+  {% endfor %}
+</section>
+
+<section class="settings-grid">
+  <form class="panel" method="post" action="/ssl/add">
+    <div class="panel-head">
+      <h2>Добавить домен</h2>
+      <span>отдельный список</span>
+    </div>
+    <div class="form-grid">
+      <label class="wide">
+        Домен
+        <input name="host" placeholder="example.com" required>
+      </label>
+      <label>
+        Порт
+        <input type="number" min="1" max="65535" name="port" value="443">
+      </label>
+      <label>
+        Метка
+        <input name="label" placeholder="Название (необязательно)">
+      </label>
+    </div>
+    <div class="form-actions">
+      <button class="primary" type="submit">Добавить</button>
+    </div>
+  </form>
+
+  <form class="panel" method="post" action="/ssl/threshold">
+    <div class="panel-head">
+      <h2>Порог уведомления</h2>
+      <span>дней</span>
+    </div>
+    <div class="form-grid">
+      <label>
+        За сколько дней предупреждать
+        <input type="number" min="1" max="365" name="ssl_alert_days" value="{{ threshold }}">
+      </label>
+    </div>
+    <div class="form-actions">
+      <button class="secondary" type="submit">Сохранить</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

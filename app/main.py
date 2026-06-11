@@ -13,16 +13,22 @@ from app.auth import COOKIE_NAME, check_login, create_session_token, hash_passwo
 from app.config import settings
 from app.db import init_db
 from app.repository import (
+    add_manual_payment,
     create_account,
     create_server,
+    create_ssl_monitor,
     delete_account,
+    delete_payment,
     delete_server,
+    delete_ssl_monitor,
     encrypt_existing_secrets,
     get_account,
+    get_app_setting,
     get_server,
     list_payment_history,
     list_accounts,
     list_servers,
+    list_ssl_monitors,
     mark_paid,
     monthly_expense_summary,
     monthly_plan_summary,
@@ -41,6 +47,7 @@ from app.connectors import ConnectorError, build_connector
 from app.provider_sync import sync_account
 from app.provider_templates import list_provider_templates, provider_countries
 from app.system_update import start_system_update
+from app.sslcheck import run_all as run_ssl_checks
 from app.terminal import terminal_websocket, web_terminal_enabled
 from app.telegram import build_telegram_share_url, detect_telegram_chats, telegram_bot_username
 from app.version import current_version
@@ -137,6 +144,7 @@ def form_payload(
     notes: str,
     sync_locked: bool = False,
     ssh_port: int = 22,
+    ssl_host: str = "",
 ) -> dict[str, object]:
     try:
         normalized_port = int(ssh_port)
@@ -156,6 +164,7 @@ def form_payload(
         "server_login": server_login.strip(),
         "server_password": server_password.strip(),
         "ssh_port": normalized_port,
+        "ssl_host": ssl_host.strip(),
         "service_id": service_id.strip(),
         "amount": amount,
         "currency": normalized_currency,
@@ -301,6 +310,7 @@ def add_server(
     notes: str = Form(""),
     sync_locked: bool = Form(False),
     ssh_port: int = Form(22),
+    ssl_host: str = Form(""),
 ) -> RedirectResponse:
     create_server(
         form_payload(
@@ -321,6 +331,7 @@ def add_server(
             notes,
             sync_locked,
             ssh_port,
+            ssl_host,
         )
     )
     return RedirectResponse("/", status_code=303)
@@ -366,35 +377,59 @@ def save_server(
     notes: str = Form(""),
     sync_locked: bool = Form(False),
     ssh_port: int = Form(22),
+    ssl_host: str = Form(""),
 ) -> RedirectResponse:
-    update_server(
-        server_id,
-        form_payload(
-            hosting_account_id,
-            name,
-            provider,
-            ip_address,
-            location,
-            server_login,
-            server_password,
-            service_id,
-            amount,
-            currency,
-            billing_period_days,
-            next_payment_date,
-            payment_url,
-            panel_url,
-            notes,
-            sync_locked,
-            ssh_port,
-        ),
+    payload = form_payload(
+        hosting_account_id,
+        name,
+        provider,
+        ip_address,
+        location,
+        server_login,
+        server_password,
+        service_id,
+        amount,
+        currency,
+        billing_period_days,
+        next_payment_date,
+        payment_url,
+        panel_url,
+        notes,
+        sync_locked,
+        ssh_port,
+        ssl_host,
     )
+    if not server_password.strip():
+        existing = get_server(server_id)
+        if existing is not None:
+            payload["server_password"] = existing.server_password
+    update_server(server_id, payload)
     return RedirectResponse("/", status_code=303)
 
 
 @app.post("/servers/{server_id}/paid")
 def paid(server_id: int, note: str = Form("")) -> RedirectResponse:
     mark_paid(server_id, note=note)
+    return RedirectResponse(f"/servers/{server_id}/pay", status_code=303)
+
+
+@app.post("/servers/{server_id}/payments")
+def add_payment(
+    server_id: int,
+    paid_at: str = Form(...),
+    amount: float = Form(0),
+    currency: str = Form(""),
+    note: str = Form(""),
+) -> RedirectResponse:
+    if get_server(server_id) is None:
+        raise HTTPException(status_code=404)
+    add_manual_payment(server_id, parse_payment_date(paid_at), amount, currency, note)
+    return RedirectResponse(f"/servers/{server_id}/pay", status_code=303)
+
+
+@app.post("/servers/{server_id}/payments/{payment_id}/delete")
+def remove_payment(server_id: int, payment_id: int) -> RedirectResponse:
+    delete_payment(payment_id)
     return RedirectResponse(f"/servers/{server_id}/pay", status_code=303)
 
 
@@ -479,21 +514,23 @@ def save_account(
     integration_url: str = Form(""),
     auto_sync_enabled: bool = Form(False),
 ) -> RedirectResponse:
-    update_account(
-        account_id,
-        account_payload(
-            name,
-            provider,
-            login,
-            auth_secret,
-            panel_url,
-            payment_url,
-            notes,
-            integration_type,
-            integration_url,
-            auto_sync_enabled,
-        ),
+    payload = account_payload(
+        name,
+        provider,
+        login,
+        auth_secret,
+        panel_url,
+        payment_url,
+        notes,
+        integration_type,
+        integration_url,
+        auto_sync_enabled,
     )
+    if not auth_secret.strip():
+        existing = get_account(account_id)
+        if existing is not None:
+            payload["auth_secret"] = existing.auth_secret
+    update_account(account_id, payload)
     return RedirectResponse("/accounts", status_code=303)
 
 
@@ -842,6 +879,46 @@ def change_password(
         return RedirectResponse("/settings?password=invalid-new", status_code=303)
     set_app_setting("admin_password_hash", hash_password(new_password))
     return RedirectResponse("/settings?password=changed", status_code=303)
+
+
+@app.get("/ssl", response_class=HTMLResponse)
+def ssl_page(request: Request) -> HTMLResponse:
+    results = run_ssl_checks()
+    try:
+        threshold = int(get_app_setting("ssl_alert_days", "3") or 3)
+    except ValueError:
+        threshold = 3
+    return templates.TemplateResponse(
+        "ssl.html",
+        {
+            "request": request,
+            "results": results,
+            "monitors": list_ssl_monitors(),
+            "threshold": threshold,
+            "donation_url": DONATION_URL,
+            "saved": request.query_params.get("saved", ""),
+        },
+    )
+
+
+@app.post("/ssl/add")
+def add_ssl_monitor(host: str = Form(...), port: int = Form(443), label: str = Form("")) -> RedirectResponse:
+    if host.strip():
+        create_ssl_monitor(host, port, label)
+    return RedirectResponse("/ssl", status_code=303)
+
+
+@app.post("/ssl/{monitor_id}/delete")
+def remove_ssl_monitor(monitor_id: int) -> RedirectResponse:
+    delete_ssl_monitor(monitor_id)
+    return RedirectResponse("/ssl", status_code=303)
+
+
+@app.post("/ssl/threshold")
+def save_ssl_threshold(ssl_alert_days: int = Form(3)) -> RedirectResponse:
+    value = ssl_alert_days if ssl_alert_days and ssl_alert_days > 0 else 3
+    set_app_setting("ssl_alert_days", str(value))
+    return RedirectResponse("/ssl?saved=1", status_code=303)
 
 
 @app.get("/analytics", response_class=HTMLResponse)
