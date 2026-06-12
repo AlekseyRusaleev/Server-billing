@@ -3,13 +3,20 @@
     Шаблон провайдера
     {% include "_template_picker.html" %}
   </label>
-  <label>
-    Название аккаунта
-    <input id="account-name" name="name" value="{{ account.name if account else '' }}" required placeholder="OneDash основной">
+  <label class="wide" id="account-host-preset-field" hidden>
+    <span id="account-host-preset-label">Хостер</span>
+    <select id="account-host-preset" class="host-preset-select">
+      <option value="">— выберите хостера —</option>
+      <option value="__custom__">Другой…</option>
+    </select>
   </label>
-  <label>
-    Провайдер
-    <input id="account-provider" name="provider" value="{{ account.provider if account else '' }}" required placeholder="rdp-onedash.ru">
+  <label id="account-name-field">
+    <span>Название аккаунта</span>
+    <input id="account-name" name="name" value="{{ account.name if account else '' }}" required placeholder="OnlineVDS основной">
+  </label>
+  <label id="account-provider-field">
+    <span>Провайдер</span>
+    <input id="account-provider" name="provider" value="{{ account.provider if account else '' }}" required placeholder="onlinevds.ru">
   </label>
   <label id="account-login-field">
     Логин
@@ -108,6 +115,10 @@
     const panelPreset = document.querySelector("#billmanager-panel-preset");
     const billingInput = document.querySelector("#account-integration-url");
     const panelInput = document.querySelector("#account-panel-url");
+    const hostPresetField = document.querySelector("#account-host-preset-field");
+    const hostPreset = document.querySelector("#account-host-preset");
+    const nameInput = document.querySelector("#account-name");
+    const providerInput = document.querySelector("#account-provider");
 
     const setValue = (selector, value, overwrite = false) => {
       const field = document.querySelector(selector);
@@ -118,6 +129,83 @@
     const hintFor = (type) => {
       const item = integrationOptions.find((option) => option.id === type);
       return item?.hint || "";
+    };
+
+    const integratedType = () => {
+      const type = integrationType?.value || "manual";
+      return type === "billmanager" || type === "onedash" ? type : "";
+    };
+
+    const templatesForIntegration = (type) =>
+      templates.filter((item) => item.integration_type === type);
+
+    const applyTemplateItem = (item) => {
+      if (!item) return;
+      setValue("#account-name", item.name, true);
+      setValue("#account-provider", item.domain || item.name, true);
+      setValue("#account-panel-url", item.panel_url, true);
+      setValue("#account-payment-url", item.payment_url || item.panel_url, true);
+      setValue("#account-integration-url", item.integration_url || item.panel_url, true);
+      const notes = [item.service_hint, item.notes].filter(Boolean).join("\n");
+      setValue("#account-notes", notes, true);
+      syncPresetSelectsFromInputs();
+    };
+
+    const rebuildHostPresetSelect = () => {
+      if (!hostPreset) return;
+      const type = integratedType();
+      const current = hostPreset.value;
+      hostPreset.innerHTML = '<option value="">— выберите хостера —</option>';
+      if (type) {
+        templatesForIntegration(type).forEach((item, index) => {
+          const option = document.createElement("option");
+          option.value = String(index);
+          option.textContent = item.name;
+          hostPreset.appendChild(option);
+        });
+      }
+      hostPreset.insertAdjacentHTML("beforeend", '<option value="__custom__">Другой…</option>');
+      if ([...hostPreset.options].some((option) => option.value === current)) {
+        hostPreset.value = current;
+      }
+    };
+
+    const matchHostPresetFromInputs = () => {
+      if (!hostPreset || !integratedType()) {
+        return false;
+      }
+      const name = (nameInput?.value || "").trim().toLowerCase();
+      const provider = (providerInput?.value || "").trim().toLowerCase();
+      if (!name && !provider) {
+        hostPreset.value = "";
+        return false;
+      }
+      const items = templatesForIntegration(integratedType());
+      const index = items.findIndex((item) => {
+        const itemName = (item.name || "").trim().toLowerCase();
+        const itemDomain = (item.domain || "").trim().toLowerCase();
+        return (name && itemName === name) || (provider && (itemDomain === provider || itemName === provider));
+      });
+      if (index >= 0) {
+        hostPreset.value = String(index);
+        return true;
+      }
+      hostPreset.value = "__custom__";
+      return false;
+    };
+
+    const toggleHostIdentityUi = () => {
+      const type = integratedType();
+      if (hostPresetField) hostPresetField.hidden = !type;
+      const presetSelected =
+        Boolean(type) && hostPreset && hostPreset.value !== "" && hostPreset.value !== "__custom__";
+      showCustomInput(nameInput, !presetSelected);
+      showCustomInput(providerInput, !presetSelected);
+      const label = document.querySelector("#account-host-preset-label");
+      if (label) {
+        label.textContent =
+          type === "onedash" ? "OneDash" : type === "billmanager" ? "BILLmanager-хостер" : "Хостер";
+      }
     };
 
     const toggleBillmanagerPresetUi = (enabled) => {
@@ -210,7 +298,26 @@
         showCustomInput(billingInput, true);
         showCustomInput(panelInput, true);
       }
+      rebuildHostPresetSelect();
+      matchHostPresetFromInputs();
+      toggleHostIdentityUi();
     };
+
+    hostPreset?.addEventListener("change", () => {
+      if (hostPreset.value === "__custom__") {
+        toggleHostIdentityUi();
+        nameInput?.focus();
+        return;
+      }
+      if (hostPreset.value === "") {
+        toggleHostIdentityUi();
+        return;
+      }
+      const items = templatesForIntegration(integratedType());
+      const item = items[Number(hostPreset.value)];
+      applyTemplateItem(item);
+      toggleHostIdentityUi();
+    });
 
     billingPreset?.addEventListener("change", () => {
       const option = billingPreset.selectedOptions[0];
@@ -236,18 +343,15 @@
       if (!templatePicker || !window.initTemplatePicker) return;
       initTemplatePicker(templatePicker, templates, (item) => {
         if (!item) return;
-        setValue("#account-name", item.name, true);
-        setValue("#account-provider", item.domain || item.name, true);
-        setValue("#account-panel-url", item.panel_url);
-        setValue("#account-payment-url", item.payment_url || item.panel_url);
-        setValue("#account-integration-url", item.integration_url || item.panel_url);
-        const notes = [item.service_hint, item.notes].filter(Boolean).join("\n");
-        setValue("#account-notes", notes);
+        applyTemplateItem(item);
         if (item.integration_type && item.integration_type !== "manual" && integrationType) {
           integrationType.value = item.integration_type;
           applyIntegrationUi();
         }
-        syncPresetSelectsFromInputs();
+        if (item.integration_type && item.integration_type !== "manual") {
+          matchHostPresetFromInputs();
+          toggleHostIdentityUi();
+        }
       });
     };
 
