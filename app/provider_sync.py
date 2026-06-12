@@ -128,8 +128,18 @@ def _diff_fields(
         notes.append(
             f"{server.name}: период {server.billing_period_days} -> {service.billing_period_days} дн."
         )
+    elif (
+        account.integration_type == "billmanager"
+        and service.billing_period_days
+        and server.billing_period_days != service.billing_period_days
+    ):
+        fields["billing_period_days"] = service.billing_period_days
+        notes.append(
+            f"{server.name}: период {server.billing_period_days} -> {service.billing_period_days} дн."
+        )
     if service.currency and service.currency != server.currency:
         fields["currency"] = service.currency
+        notes.append(f"{server.name}: валюта {server.currency} -> {service.currency}")
     if service.status and service.status != server.status:
         fields["status"] = service.status
         notes.append(f"{server.name}: статус {server.status} -> {service.status}")

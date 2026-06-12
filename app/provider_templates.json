@@ -175,7 +175,7 @@
     "integration_type": "billmanager",
     "integration_url": "https://my.qwins.co/billmgr",
     "api_docs_url": "https://www.ispsystem.ru/docs/billmanager/razrabotchiku/billmanager-api",
-    "default_currency": "RUB",
+    "default_currency": "USD",
     "billing_period_days": 30,
     "service_hint": "Личный кабинет: услуги -> виртуальные серверы.",
     "notes": "BILLmanager API: func=vds, authinfo=логин:пароль."

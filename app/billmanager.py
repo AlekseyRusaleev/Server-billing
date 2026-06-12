@@ -34,10 +34,13 @@ KNOWN_BILLMANAGER_HOSTS = {
 SERVICE_FUNCTIONS = ("vds", "dedic", "vhost")
 
 # Кандидаты имён полей в <elem> — берём первое непустое.
-NAME_FIELDS = ("name", "domain", "desc", "fullname")
+NAME_FIELDS = ("domain", "serverid", "name", "desc", "fullname")
 IP_FIELDS = ("ip", "ipaddr", "ip_addr", "addr")
-EXPIRE_FIELDS = ("real_expiredate", "expiredate", "expire", "paydate")
-COST_FIELDS = ("cost", "costperiod", "price", "cost_iso", "paymethodamount_iso")
+EXPIRE_FIELDS = ("expiredate", "real_expiredate", "expire")
+COST_AMOUNT_FIELDS = ("cost_iso", "paymethodamount_iso", "cost", "price")
+CURRENCY_FIELDS = ("currency", "currency_iso", "costcurrency")
+LOCATION_FIELDS = ("datacentername", "location", "datacenter")
+PERIOD_FIELDS = ("costperiod", "period", "periodday", "billperiod")
 
 # Коды статусов BILLmanager -> внутренние статусы панели.
 STATUS_MAP = {
@@ -382,6 +385,56 @@ def _parse_cost(raw: str) -> float | None:
         return None
 
 
+def _parse_currency(raw: str) -> str:
+    text = (raw or "").strip()
+    if not text:
+        return ""
+    lower = text.lower()
+    if any(marker in lower for marker in ("$", "usd", "us$")):
+        return "USD"
+    if any(marker in lower for marker in ("€", "eur")):
+        return "EUR"
+    if any(marker in text for marker in ("₽",)) or any(marker in lower for marker in ("rub", "руб")):
+        return "RUB"
+    parts = text.split()
+    if parts:
+        tail = parts[-1].upper()
+        if len(tail) == 3 and tail.isalpha():
+            return tail
+    return ""
+
+
+def _parse_billing_period(raw: str) -> int | None:
+    text = (raw or "").strip().lower()
+    if not text:
+        return None
+    if any(word in text for word in ("year", "год", "лет", "annual")):
+        return 365
+    if any(word in text for word in ("month", "мес", "mes")):
+        return 30
+    if any(word in text for word in ("week", "нед")):
+        return 7
+    days = _parse_cost(text)
+    if days is not None and days >= 7:
+        return int(days)
+    return None
+
+
+def _parse_money(elem: ET.Element) -> tuple[float | None, str]:
+    for field in COST_AMOUNT_FIELDS:
+        raw = elem.findtext(field) or ""
+        if not raw.strip():
+            continue
+        amount = _parse_cost(raw)
+        if amount is None:
+            continue
+        currency = _parse_currency(raw)
+        if not currency:
+            currency = _first_text(elem, CURRENCY_FIELDS)
+        return amount, currency.upper() if currency else ""
+    return None, ""
+
+
 def _parse_date(raw: str):
     if not raw:
         return None
@@ -401,12 +454,20 @@ def _parse_service(elem: ET.Element) -> RemoteService | None:
     if not service_id:
         return None
     status_raw = (elem.findtext("status") or "").strip()
+    amount, currency = _parse_money(elem)
+    billing_period = _parse_billing_period(_first_text(elem, PERIOD_FIELDS))
+    display_name = _first_text(elem, NAME_FIELDS) or service_id
+    pricelist = (elem.findtext("pricelist") or "").strip()
+    if pricelist and display_name and pricelist not in display_name:
+        display_name = f"{pricelist} · {display_name}"
     return RemoteService(
         service_id=service_id,
-        name=_first_text(elem, NAME_FIELDS) or service_id,
+        name=display_name,
         ip_address=_first_text(elem, IP_FIELDS),
         status=STATUS_MAP.get(status_raw, "active"),
         next_payment_date=_parse_date(_first_text(elem, EXPIRE_FIELDS)),
-        amount=_parse_cost(_first_text(elem, COST_FIELDS)),
-        currency="",
+        amount=amount,
+        currency=currency,
+        billing_period_days=billing_period,
+        location=_first_text(elem, LOCATION_FIELDS),
     )
