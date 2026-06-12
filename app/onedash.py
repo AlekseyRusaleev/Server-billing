@@ -143,9 +143,14 @@ class OneDashConnector:
                     info = self._request("order-info", post=True, payload={"order_id": order_id})
                     data = info.get("data")
                     if isinstance(data, dict):
-                        order = {**order, **data}
+                        order = _merge_order_payload(order, data)
+                    else:
+                        order = _normalize_onedash_order(order)
                 except ConnectorError:
                     logger.debug("OneDash order-info failed for order %s", order_id)
+                    order = _normalize_onedash_order(order)
+            else:
+                order = _normalize_onedash_order(order)
             services.extend(_services_from_order(order, tariffs, period_hints, site_pricing))
         return services
 
@@ -535,6 +540,39 @@ def _parse_options_blob(raw: object) -> dict[str, object]:
     return {}
 
 
+def _normalize_onedash_order(order: dict[str, object]) -> dict[str, object]:
+    normalized = dict(order)
+    if not normalized.get("tariff_id"):
+        tariff = normalized.get("tariff")
+        if isinstance(tariff, dict) and tariff.get("id") is not None:
+            normalized["tariff_id"] = tariff.get("id")
+    if not normalized.get("tariff") and normalized.get("tariff_id"):
+        normalized["tariff"] = {"id": normalized.get("tariff_id")}
+    return normalized
+
+
+def _merge_order_payload(order: dict[str, object], info: dict[str, object]) -> dict[str, object]:
+    """order-info может не содержать dop_options — не затираем поля из all-orders."""
+    merged = {**order, **info}
+    preserve_keys = (
+        "dop_options",
+        "additional_options",
+        "dop_amount",
+        "processor",
+        "order_count",
+        "period",
+        "price",
+        "tariff_id",
+        "tariff_name",
+    )
+    for key in preserve_keys:
+        info_value = info.get(key)
+        order_value = order.get(key)
+        if info_value in (None, "", {}, "[]", "null") and order_value not in (None, "", {}, "[]", "null"):
+            merged[key] = order_value
+    return _normalize_onedash_order(merged)
+
+
 def _order_addon_options(order: dict[str, object]) -> dict[str, object]:
     for key in ("dop_options", "additional_options", "options"):
         parsed = _parse_options_blob(order.get(key))
@@ -544,9 +582,16 @@ def _order_addon_options(order: dict[str, object]) -> dict[str, object]:
     if scanned:
         return scanned
     merged: dict[str, object] = {}
-    for option in ("static_ip", "nvme", "backup"):
-        if option in order:
-            merged[option] = order[option]
+    aliases = {
+        "static_ip": ("static_ip", "staticIp", "has_static_ip", "dedicated_ip"),
+        "nvme": ("nvme", "has_nvme"),
+        "backup": ("backup", "has_backup"),
+    }
+    for option, keys in aliases.items():
+        for key in keys:
+            if key in order:
+                merged[option] = order[key]
+                break
     return merged
 
 
@@ -579,22 +624,26 @@ def _option_enabled(options: dict[str, object], name: str) -> bool:
     if isinstance(value, (int, float)):
         return value > 0
     if isinstance(value, str):
-        return value.strip().lower() in {"1", "true", "yes", "on"}
+        return value.strip().lower() in {"1", "true", "yes", "on", "y"}
     return False
 
 
-def _processor_multiplier(
+def _apply_processor_price(
+    base: float,
     order: dict[str, object],
     location: str,
     site_pricing: SitePricing | None,
 ) -> float:
     processor = str(order.get("processor") or "intel").strip().lower()
     if processor not in {"amd", "amd_epyc"}:
-        return 1.0
+        return base
     pricing = site_pricing or SitePricing()
     key = _normalize_location(location)
     factor = pricing.amd_factors.get(key)
-    return factor if factor and factor > 0 else 1.0
+    if not factor or factor <= 0:
+        return base
+    adjusted = base * factor
+    return round(adjusted)
 
 
 def _addon_multiplier(period: int) -> float:
@@ -615,24 +664,21 @@ def _extra_charges(
     pricing = site_pricing or SitePricing()
     options = _order_addon_options(order)
 
-    catalog_addons = 0.0
+    total = 0.0
     if _option_enabled(options, "static_ip"):
-        catalog_addons += pricing.static_ip
+        total += pricing.static_ip
     if _option_enabled(options, "nvme"):
-        catalog_addons += pricing.nvme
+        total += pricing.nvme
     if _option_enabled(options, "backup"):
-        catalog_addons += pricing.backup
-    if catalog_addons > 0:
-        return catalog_addons * mult
-
+        total += pricing.backup
     extra = _localized_amount(order.get("dop_amount"), currency)
     if extra > 0:
-        return extra * mult
-    return 0.0
+        total += extra
+    return total * mult
 
 
 def _scan_order_amount(raw: object, *, depth: int = 0) -> float | None:
-    if depth > 5:
+    if depth > 3:
         return None
     if isinstance(raw, dict):
         for key, value in raw.items():
@@ -640,21 +686,17 @@ def _scan_order_amount(raw: object, *, depth: int = 0) -> float | None:
             if key_l in {
                 "renew_price",
                 "renewal_price",
-                "next_payment",
                 "next_payment_price",
-                "payment_amount",
             }:
                 amount = _parse_amount(value)
                 if amount is not None:
                     return amount
-            if key_l in {"price", "amount", "summ", "sum"} and "dop" not in key_l:
-                amount = _parse_amount(value)
-                if amount is not None and amount >= 10:
+        for nested_key in ("payment", "renew", "billing", "price_info"):
+            nested = raw.get(nested_key)
+            if isinstance(nested, dict):
+                amount = _scan_order_amount(nested, depth=depth + 1)
+                if amount is not None:
                     return amount
-        for value in raw.values():
-            amount = _scan_order_amount(value, depth=depth + 1)
-            if amount is not None:
-                return amount
     return None
 
 
@@ -679,19 +721,10 @@ def _parse_amount(raw: object) -> float | None:
 
 
 def _order_amount_from_payload(order: dict[str, object]) -> tuple[float | None, int | None, str]:
+    """Берём только явную сумму продления; базовый price заказа — не полная стоимость."""
     currency = str(order.get("currency") or "RUB")
     period = _order_period(order)
-    for key in (
-        "renew_price",
-        "renewal_price",
-        "next_payment",
-        "next_payment_price",
-        "price",
-        "amount",
-        "payment_amount",
-        "summ",
-        "sum",
-    ):
+    for key in ("renew_price", "renewal_price", "next_payment_price"):
         amount = _parse_amount(order.get(key))
         if amount is not None:
             return amount, period, currency
@@ -701,7 +734,7 @@ def _order_amount_from_payload(order: dict[str, object]) -> tuple[float | None, 
             continue
         nested_currency = str(nested.get("currency") or currency)
         nested_period = _order_period(nested) or period
-        for key in ("renew_price", "renewal_price", "price", "amount", "payment_amount", "summ", "sum"):
+        for key in ("renew_price", "renewal_price", "next_payment_price"):
             amount = _parse_amount(nested.get(key))
             if amount is not None:
                 return amount, nested_period, nested_currency
@@ -763,10 +796,15 @@ def _renewal_amount(
         return None, period, currency
 
     period = matched_period
-    base *= _processor_multiplier(order, location, site_pricing)
+    base = _apply_processor_price(base, order, location, site_pricing)
     order_count = max(1, int(order.get("order_count") or 1))
     total = (base + _extra_charges(order, period, currency, site_pricing)) * order_count
-    return total, period, currency
+    if not _order_addon_options(order) and _localized_amount(order.get("dop_amount"), currency) <= 0:
+        logger.debug(
+            "OneDash order %s: в ответе API нет dop_options/dop_amount — сумма только по тарифу.",
+            order.get("order_id"),
+        )
+    return round(total, 1), period, currency
 
 
 def _parse_finish_date(raw: object) -> datetime | None:
@@ -817,9 +855,9 @@ def _services_from_order(
     period_hints = known_periods or {}
     order_id = str(order.get("order_id") or "").strip()
     tariff = order.get("tariff") if isinstance(order.get("tariff"), dict) else {}
-    tariff_name = str(tariff.get("name") or "OneDash").strip()
+    tariff_name = str(tariff.get("name") or order.get("tariff_name") or "OneDash").strip()
     try:
-        tariff_id = int(tariff.get("id") or 0)
+        tariff_id = int(order.get("tariff_id") or tariff.get("id") or 0)
     except (TypeError, ValueError):
         tariff_id = 0
     tariff_id = _resolve_tariff_id(tariff_id, tariff_name, tariffs)
