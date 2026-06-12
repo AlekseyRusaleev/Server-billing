@@ -55,9 +55,11 @@ def build_connector(account: HostingAccount) -> ProviderConnector | None:
         from app.billmanager import BillmanagerConnector
 
         return BillmanagerConnector(
-            base_url=account.integration_url or account.panel_url,
             login=account.login,
             password=account.auth_secret,
+            integration_url=account.integration_url,
+            panel_url=account.panel_url,
+            provider=account.provider,
         )
     if account.integration_type == "onedash":
         from app.onedash import OneDashConnector

@@ -167,15 +167,46 @@
     "notes": "VPS, хостинг и выделенные серверы. В заметках удобно хранить страну/локацию."
   },
   {
+    "name": "QWINS",
+    "domain": "qwins.co",
+    "website_url": "https://qwins.co/",
+    "panel_url": "https://my.qwins.co/billmgr?func=logon",
+    "payment_url": "https://my.qwins.co/billmgr?func=logon",
+    "integration_type": "billmanager",
+    "integration_url": "https://my.qwins.co/billmgr",
+    "api_docs_url": "https://www.ispsystem.ru/docs/billmanager/razrabotchiku/billmanager-api",
+    "default_currency": "RUB",
+    "billing_period_days": 30,
+    "service_hint": "Личный кабинет: услуги -> виртуальные серверы.",
+    "notes": "BILLmanager API: func=vds, authinfo=логин:пароль."
+  },
+  {
     "name": "OnlineVDS",
     "domain": "onlinevds.ru",
     "website_url": "https://onlinevds.ru/",
-    "panel_url": "https://my.onlinevds.ru/",
-    "payment_url": "https://my.onlinevds.ru/",
+    "panel_url": "https://my.onlinevds.ru/billmgr?func=logon",
+    "payment_url": "https://my.onlinevds.ru/billmgr?func=logon",
+    "integration_type": "billmanager",
+    "integration_url": "https://my.onlinevds.ru/billmgr",
+    "api_docs_url": "https://www.ispsystem.ru/docs/billmanager/razrabotchiku/billmanager-api",
     "default_currency": "RUB",
     "billing_period_days": 30,
     "service_hint": "Личный кабинет: услуги -> виртуальный сервер.",
-    "notes": "VDS/VPS с оплатой в рублях. Сохраняй ID услуги из кабинета."
+    "notes": "VDS/VPS с оплатой в рублях. BILLmanager API."
+  },
+  {
+    "name": "LN-Tech",
+    "domain": "ln-tech.ru",
+    "website_url": "https://ln-tech.ru/",
+    "panel_url": "https://lk.ln-tech.ru/billmgr?func=logon",
+    "payment_url": "https://lk.ln-tech.ru/billmgr?func=logon",
+    "integration_type": "billmanager",
+    "integration_url": "https://lk.ln-tech.ru/billmgr",
+    "api_docs_url": "https://www.ispsystem.ru/docs/billmanager/razrabotchiku/billmanager-api",
+    "default_currency": "RUB",
+    "billing_period_days": 30,
+    "service_hint": "Личный кабинет: услуги -> VPS.",
+    "notes": "BILLmanager API."
   },
   {
     "name": "Hostoff",

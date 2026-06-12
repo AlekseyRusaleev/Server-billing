@@ -11,7 +11,7 @@ INTEGRATION_OPTIONS: list[dict[str, str]] = [
     {
         "id": "billmanager",
         "label": "BILLmanager",
-        "hint": "URL биллинга, логин и пароль API. Подтягивает услуги, даты и суммы.",
+        "hint": "URL биллинга (https://my.qwins.co/billmgr), логин и пароль от кабинета. Подтягивает VPS, даты и суммы.",
     },
     {
         "id": "onedash",

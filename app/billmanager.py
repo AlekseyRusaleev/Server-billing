@@ -5,7 +5,7 @@
 отличается именами функций и полей, поэтому парсинг намеренно защитный —
 читаем первое подходящее поле и не падаем на отсутствующих.
 
-Док.: https://www.ispsystem.com/docs/b6c/developer-section/working-with-api
+Док.: https://www.ispsystem.ru/docs/billmanager/razrabotchiku/billmanager-api
 """
 from __future__ import annotations
 
@@ -15,10 +15,20 @@ import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 from datetime import datetime
+from urllib.parse import urlparse, urlunparse
 
 from app.connectors import ConnectorError, RemoteService
 
 logger = logging.getLogger(__name__)
+
+KNOWN_BILLMANAGER_HOSTS = {
+    "qwins.co": "https://my.qwins.co/billmgr",
+    "qwins": "https://my.qwins.co/billmgr",
+    "onlinevds.ru": "https://my.onlinevds.ru/billmgr",
+    "onlinevds": "https://my.onlinevds.ru/billmgr",
+    "ln-tech.ru": "https://lk.ln-tech.ru/billmgr",
+    "ln-tech": "https://lk.ln-tech.ru/billmgr",
+}
 
 # Функции списка услуг по типам продуктов. Работают и в BM5, и в BM6.
 SERVICE_FUNCTIONS = ("vds", "dedic", "vhost")
@@ -39,23 +49,104 @@ STATUS_MAP = {
 }
 
 
+def normalize_billmgr_url(raw: str) -> str:
+    """Приводит URL к https://host/billmgr без ?func=logon и лишних сегментов."""
+    text = (raw or "").strip()
+    if not text:
+        return ""
+    if not text.startswith(("http://", "https://")):
+        text = f"https://{text.lstrip('/')}"
+    parsed = urlparse(text)
+    if not parsed.netloc:
+        return ""
+    path = parsed.path or ""
+    lower_path = path.lower()
+    if "/billmgr" in lower_path:
+        idx = lower_path.index("/billmgr")
+        path = path[: idx + len("/billmgr")]
+    else:
+        path = (path.rstrip("/") or "") + "/billmgr"
+    scheme = parsed.scheme or "https"
+    return urlunparse((scheme, parsed.netloc, path, "", "", ""))
+
+
+def resolve_billmanager_url(integration_url: str, panel_url: str, provider: str = "") -> str:
+    for candidate in (integration_url, panel_url):
+        normalized = normalize_billmgr_url(candidate)
+        if normalized:
+            return normalized
+    hint = (provider or "").strip().lower()
+    if not hint:
+        return ""
+    for key, url in KNOWN_BILLMANAGER_HOSTS.items():
+        if key in hint:
+            return url
+    return ""
+
+
 class BillmanagerConnector:
-    def __init__(self, base_url: str, login: str, password: str, timeout: int = 25) -> None:
-        self.base_url = (base_url or "").strip()
+    def __init__(
+        self,
+        login: str,
+        password: str,
+        timeout: int = 25,
+        *,
+        integration_url: str = "",
+        panel_url: str = "",
+        provider: str = "",
+    ) -> None:
+        self.base_url = resolve_billmanager_url(integration_url, panel_url, provider)
         self.login = (login or "").strip()
         self.password = password or ""
         self.timeout = timeout
         if not self.base_url:
-            raise ConnectorError("Не указан URL BILLmanager.")
+            raise ConnectorError(
+                "Не указан URL BILLmanager. Для QWINS: https://my.qwins.co/billmgr"
+            )
         if not self.login or not self.password:
-            raise ConnectorError("Не указаны логин или пароль API BILLmanager.")
+            raise ConnectorError("Не указаны логин или пароль от кабинета BILLmanager.")
 
     @property
     def endpoint(self) -> str:
-        url = self.base_url.rstrip("/")
-        if url.endswith("/billmgr"):
-            return url
-        return f"{url}/billmgr"
+        return self.base_url
+
+    def _fetch_raw(self, params: dict[str, str], method: str) -> bytes:
+        headers = {"User-Agent": "server-billing-manager/1.0"}
+        if method == "POST":
+            body = urllib.parse.urlencode(params).encode("utf-8")
+            request = urllib.request.Request(
+                self.endpoint,
+                data=body,
+                method="POST",
+                headers=headers,
+            )
+        else:
+            url = f"{self.endpoint}?{urllib.parse.urlencode(params)}"
+            request = urllib.request.Request(url, method="GET", headers=headers)
+        try:
+            with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                return response.read()
+        except urllib.error.HTTPError as error:
+            detail = error.read()[:200].decode("utf-8", errors="ignore").strip()
+            suffix = f" ({detail})" if detail else ""
+            raise ConnectorError(f"BILLmanager вернул HTTP {error.code}{suffix}.") from error
+        except urllib.error.URLError as error:
+            raise ConnectorError(f"Не удалось подключиться к BILLmanager: {error.reason}.") from error
+
+    def _parse_xml(self, raw: bytes) -> ET.Element:
+        text = raw.decode("utf-8", errors="ignore").strip()
+        if not text.startswith("<"):
+            snippet = text[:160].replace("\n", " ")
+            raise ConnectorError(f"BILLmanager вернул не XML: {snippet or 'пустой ответ'}")
+        try:
+            root = ET.fromstring(raw)
+        except ET.ParseError as error:
+            raise ConnectorError("BILLmanager вернул неожиданный ответ (не XML).") from error
+        error_node = root.find("error")
+        if error_node is not None:
+            message = (error_node.findtext("msg") or error_node.get("type") or "ошибка").strip()
+            raise ConnectorError(f"BILLmanager: {message}")
+        return root
 
     def _request(self, func: str, extra: dict[str, str] | None = None) -> ET.Element:
         params = {
@@ -65,31 +156,15 @@ class BillmanagerConnector:
         }
         if extra:
             params.update(extra)
-        body = urllib.parse.urlencode(params).encode("utf-8")
-        request = urllib.request.Request(
-            self.endpoint,
-            data=body,
-            method="POST",
-            headers={"User-Agent": "server-billing-manager/1.0"},
-        )
-        try:
-            with urllib.request.urlopen(request, timeout=self.timeout) as response:
-                raw = response.read()
-        except urllib.error.HTTPError as error:
-            raise ConnectorError(f"BILLmanager вернул HTTP {error.code}.") from error
-        except urllib.error.URLError as error:
-            raise ConnectorError(f"Не удалось подключиться к BILLmanager: {error.reason}.") from error
-
-        try:
-            root = ET.fromstring(raw)
-        except ET.ParseError as error:
-            raise ConnectorError("BILLmanager вернул неожиданный ответ (не XML).") from error
-
-        error_node = root.find("error")
-        if error_node is not None:
-            message = (error_node.findtext("msg") or error_node.get("type") or "ошибка").strip()
-            raise ConnectorError(f"BILLmanager: {message}")
-        return root
+        last_error: ConnectorError | None = None
+        for method in ("POST", "GET"):
+            try:
+                return self._parse_xml(self._fetch_raw(params, method))
+            except ConnectorError as error:
+                last_error = error
+        if last_error is not None:
+            raise last_error
+        raise ConnectorError("BILLmanager: ошибка запроса.")
 
     @staticmethod
     def _is_auth_error(error: ConnectorError) -> bool:
@@ -98,7 +173,7 @@ class BillmanagerConnector:
 
     def test_connection(self) -> None:
         last_error: ConnectorError | None = None
-        for func in ("whoami", "usrparam", "vds"):
+        for func in ("vds", "whoami", "usrparam"):
             try:
                 self._request(func)
                 return

@@ -40,6 +40,7 @@ from app.repository import (
     save_notification_settings,
     set_app_setting,
     seed_demo_data,
+    set_account_sync_result,
     update_account,
     update_server,
 )
@@ -59,6 +60,7 @@ from app.telegram import (
     telegram_bot_username,
 )
 from app.integrations import INTEGRATION_OPTIONS, SUPPORTED_INTEGRATIONS
+from app.billmanager import resolve_billmanager_url
 from app.onedash import build_onedash_integration_settings, onedash_addon_defaults
 from app.version import current_version
 
@@ -247,16 +249,28 @@ def account_payload(
             nvme=onedash_nvme,
             processor=onedash_processor,
         )
+    panel = panel_url.strip()
+    payment = payment_url.strip()
+    api_url = integration_url.strip()
+    if normalized_integration == "billmanager":
+        billmgr = resolve_billmanager_url(api_url, panel, provider)
+        if billmgr:
+            api_url = billmgr
+            cabinet = f"{billmgr}?func=logon"
+            if not panel:
+                panel = cabinet
+            if not payment:
+                payment = cabinet
     return {
         "name": name.strip(),
         "provider": provider.strip(),
         "login": login.strip(),
         "auth_secret": auth_secret.strip(),
-        "panel_url": panel_url.strip(),
-        "payment_url": payment_url.strip(),
+        "panel_url": panel,
+        "payment_url": payment,
         "notes": notes.strip(),
         "integration_type": normalized_integration,
-        "integration_url": integration_url.strip(),
+        "integration_url": api_url,
         "auto_sync_enabled": bool(auto_sync_enabled) and normalized_integration != "manual",
         "integration_settings": settings_json,
     }
@@ -625,8 +639,10 @@ def test_account_connection(account_id: int) -> RedirectResponse:
         return RedirectResponse("/accounts?test=manual", status_code=303)
     try:
         connector.test_connection()
-    except ConnectorError:
+    except ConnectorError as error:
+        set_account_sync_result(account_id, "error", str(error))
         return RedirectResponse("/accounts?test=error", status_code=303)
+    set_account_sync_result(account_id, "ok", "Подключение к API успешно.")
     return RedirectResponse("/accounts?test=ok", status_code=303)
 
 

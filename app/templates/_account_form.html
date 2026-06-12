@@ -42,7 +42,7 @@
   </label>
   <label class="integration-field" id="account-integration-url-field">
     <span id="account-integration-url-label">URL API / биллинга</span>
-    <input id="account-integration-url" name="integration_url" value="{{ account.integration_url if account else '' }}" placeholder="https://...">
+    <input id="account-integration-url" name="integration_url" value="{{ account.integration_url if account else '' }}" placeholder="https://my.qwins.co/billmgr">
   </label>
   <label class="integration-field checkbox-label">
     <input type="checkbox" id="account-auto-sync" name="auto_sync_enabled" value="on" {% if account and account.auto_sync_enabled %}checked{% endif %}>
@@ -112,11 +112,15 @@
       if (loginField) loginField.style.display = type === "onedash" ? "none" : "";
       if (secretLabel) {
         secretLabel.textContent =
-          type === "onedash" ? "Api-Key OneDash" : type === "billmanager" ? "Пароль API BILLmanager" : "Пароль / секрет";
+          type === "onedash" ? "Api-Key OneDash" : type === "billmanager" ? "Пароль от кабинета" : "Пароль / секрет";
       }
       if (secretInput) {
         secretInput.placeholder =
-          type === "onedash" ? "Api-Key из личного кабинета" : "пароль, API-ключ или заметка";
+          type === "onedash"
+            ? "Api-Key из личного кабинета"
+            : type === "billmanager"
+              ? "пароль от личного кабинета хостера"
+              : "пароль, API-ключ или заметка";
       }
       if (urlField) urlField.style.display = type === "onedash" ? "none" : show ? "" : "none";
       if (urlLabel) {
@@ -135,6 +139,7 @@
         setValue("#account-provider", item.domain || item.name, true);
         setValue("#account-panel-url", item.panel_url);
         setValue("#account-payment-url", item.payment_url || item.panel_url);
+        setValue("#account-integration-url", item.integration_url || item.panel_url);
         const notes = [item.service_hint, item.notes].filter(Boolean).join("\n");
         setValue("#account-notes", notes);
         if (item.integration_type && item.integration_type !== "manual" && integrationType) {
