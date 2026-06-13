@@ -18,6 +18,7 @@ from datetime import datetime
 from urllib.parse import urlparse, urlunparse
 
 from app.connectors import ConnectorError, RemoteService
+from app.url_safety import assert_public_http_url
 
 logger = logging.getLogger(__name__)
 
@@ -269,6 +270,7 @@ class BillmanagerConnector:
         return self.base_url
 
     def _fetch_raw(self, params: dict[str, str], method: str) -> bytes:
+        assert_public_http_url(self.endpoint, context="BILLmanager URL")
         headers = {"User-Agent": "server-billing-manager/1.0"}
         if method == "POST":
             body = urllib.parse.urlencode(params).encode("utf-8")

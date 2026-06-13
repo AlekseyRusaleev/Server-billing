@@ -8,6 +8,7 @@ import urllib.request
 from datetime import date
 from pathlib import Path
 
+from app.crypto import EncryptionRequiredError, encrypt_bytes
 from app.config import settings
 from app.db import connect, database_path
 from app.models import Server
@@ -178,10 +179,23 @@ def send_backup() -> bool:
     if not path.exists():
         logger.warning("Database file does not exist: %s", path)
         return False
-    sent = send_telegram_document(
-        path,
-        caption=f"Server Billing backup: {date.today().isoformat()}",
-    )
+    try:
+        encrypted = encrypt_bytes(path.read_bytes())
+    except EncryptionRequiredError as error:
+        logger.error("Backup skipped: %s", error)
+        return False
+    temp_path = path.with_suffix(path.suffix + ".enc")
+    temp_path.write_bytes(encrypted)
+    try:
+        sent = send_telegram_document(
+            temp_path,
+            caption=(
+                f"Server Billing backup (Fernet): {date.today().isoformat()}. "
+                "Расшифровка: APP_ENCRYPTION_KEY из .env."
+            ),
+        )
+    finally:
+        temp_path.unlink(missing_ok=True)
     if sent:
         mark_backup_sent()
     return sent

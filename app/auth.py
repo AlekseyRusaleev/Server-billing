@@ -7,6 +7,7 @@ import json
 import os
 import secrets
 import time
+import time
 
 from fastapi import Request
 
@@ -104,10 +105,41 @@ def create_session_token(username: str) -> str:
 
 def is_authenticated(request: Request) -> bool:
     if not auth_enabled():
-        return True
+        return False
     token = request.cookies.get(COOKIE_NAME, "")
     payload = verify_session_token(token)
     return bool(payload and payload.get("sub") == settings.admin_username)
+
+
+def auth_setup_message() -> str:
+    missing: list[str] = []
+    if not session_secret():
+        missing.append("APP_SECRET_KEY")
+    if not admin_password_hash().strip():
+        missing.append("ADMIN_PASSWORD_HASH")
+    if not missing:
+        return ""
+    return f"Панель заблокирована: задайте {', '.join(missing)} в .env и перезапустите сервис."
+
+
+_LOGIN_WINDOW_SECONDS = 15 * 60
+_LOGIN_MAX_ATTEMPTS = 5
+_login_failures: dict[str, list[float]] = {}
+
+
+def login_rate_limited(client_ip: str) -> bool:
+    now = time.time()
+    attempts = [stamp for stamp in _login_failures.get(client_ip, []) if now - stamp < _LOGIN_WINDOW_SECONDS]
+    _login_failures[client_ip] = attempts
+    return len(attempts) >= _LOGIN_MAX_ATTEMPTS
+
+
+def record_login_failure(client_ip: str) -> None:
+    _login_failures.setdefault(client_ip, []).append(time.time())
+
+
+def clear_login_failures(client_ip: str) -> None:
+    _login_failures.pop(client_ip, None)
 
 
 def check_login(username: str, password: str) -> bool:

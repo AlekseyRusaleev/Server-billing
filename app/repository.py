@@ -4,7 +4,7 @@ from datetime import date, datetime, timedelta
 from collections import defaultdict
 
 from app.config import settings
-from app.crypto import decrypt_secret, encrypt_secret, is_encrypted
+from app.crypto import EncryptionRequiredError, encrypt_secret, is_encrypted
 from app.currency import fetch_currency_rates, rates_from_string, rates_to_string, today_label
 from app.db import connect
 from app.models import (
@@ -618,6 +618,10 @@ def mark_backup_sent() -> None:
 
 
 def encrypt_existing_secrets() -> None:
+    from app.crypto import encryption_configured
+
+    if not encryption_configured():
+        return
     with connect() as connection:
         rows = connection.execute("SELECT id, auth_secret FROM hosting_accounts").fetchall()
         for row in rows:

@@ -58,7 +58,7 @@ def _remember_host(host_id: str, fingerprint: str) -> None:
 
 def _authenticated(websocket: WebSocket) -> bool:
     if not auth_enabled():
-        return True
+        return False
     token = websocket.cookies.get(COOKIE_NAME, "")
     payload = verify_session_token(token)
     return bool(payload and payload.get("sub") == settings.admin_username)

@@ -13,7 +13,7 @@
       <h1>Server Billing</h1>
       <p>Войдите в панель управления оплатами.</p>
       {% if error %}
-      <div class="form-error">{{ error }}</div>
+      <div class="form-error{% if setup_required %} form-warning{% endif %}">{{ error }}</div>
       {% endif %}
       <label>
         Логин

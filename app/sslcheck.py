@@ -19,6 +19,7 @@ from urllib.parse import urlparse
 from cryptography import x509
 
 from app.repository import list_servers, list_ssl_monitors, set_ssl_monitor_status
+from app.url_safety import assert_public_host
 
 DEFAULT_PORT = 443
 CHECK_TIMEOUT = 6.0
@@ -52,6 +53,9 @@ class SslResult:
 
 def check_ssl_expiry(host: str, port: int = DEFAULT_PORT, timeout: float = CHECK_TIMEOUT):
     """Возвращает (not_after: datetime, days_left: int). Бросает исключение при ошибке."""
+    assert_public_host(host, context="SSL-хост")
+    if port < 1 or port > 65535:
+        raise ValueError("Некорректный порт SSL.")
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     context.check_hostname = False
     context.verify_mode = ssl.CERT_NONE

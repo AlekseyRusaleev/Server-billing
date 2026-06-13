@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 from app.connectors import ConnectorError, RemoteService
+from app.url_safety import assert_host_suffix
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +98,11 @@ class OneDashConnector:
             raise ConnectorError("Не указан Api-Key OneDash.")
 
     def _request(self, method: str, *, post: bool = False, payload: dict[str, object] | None = None) -> dict[str, object]:
+        assert_host_suffix(
+            self.api_base,
+            ("onedash.ru", "rdp-onedash.ru"),
+            context="OneDash API",
+        )
         url = f"{self.api_base}/{method.lstrip('/')}"
         headers = {
             "Api-Key": self.api_key,

@@ -2,15 +2,27 @@ from __future__ import annotations
 
 import calendar as calendar_lib
 import json
+import logging
 from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 
 from fastapi import FastAPI, Form, HTTPException, Request, WebSocket
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app.auth import COOKIE_NAME, check_login, create_session_token, hash_password, is_authenticated
+from app.auth import (
+    COOKIE_NAME,
+    auth_enabled,
+    auth_setup_message,
+    check_login,
+    clear_login_failures,
+    create_session_token,
+    hash_password,
+    is_authenticated,
+    login_rate_limited,
+    record_login_failure,
+)
 from app.ip_access import client_ip, is_address_allowed, is_ip_allowed, normalize_allowlist, panel_ip_allowlist_text
 from app.config import settings
 from app.db import init_db
@@ -62,10 +74,21 @@ from app.telegram import (
 )
 from app.integrations import INTEGRATION_OPTIONS, SUPPORTED_INTEGRATIONS
 from app.billmanager import billmanager_presets, integration_host_options, resolve_billmanager_url
+from app.crypto import EncryptionRequiredError
 from app.onedash import build_onedash_integration_settings, onedash_addon_defaults
+from app.url_safety import validate_http_url
 from app.version import current_version
 
+logger = logging.getLogger(__name__)
+
 app = FastAPI(title=settings.app_name)
+
+
+@app.exception_handler(EncryptionRequiredError)
+async def encryption_required_handler(_request: Request, exc: EncryptionRequiredError):
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
 
@@ -106,6 +129,14 @@ def startup() -> None:
     init_db()
     seed_demo_data()
     encrypt_existing_secrets()
+    if not auth_enabled():
+        logger.critical("Панель заблокирована: не заданы APP_SECRET_KEY и/или ADMIN_PASSWORD_HASH.")
+    from app.crypto import encryption_configured
+
+    if not encryption_configured():
+        logger.warning(
+            "APP_ENCRYPTION_KEY не задан — пароли и API-ключи не будут сохраняться до настройки ключа."
+        )
 
 
 @app.middleware("http")
@@ -133,7 +164,11 @@ async def enforce_ip_allowlist(request: Request, call_next):
 def login_page(request: Request) -> HTMLResponse:
     if is_authenticated(request):
         return RedirectResponse("/", status_code=303)
-    return templates.TemplateResponse("login.html", {"request": request, "error": ""})
+    setup_message = auth_setup_message()
+    return templates.TemplateResponse(
+        "login.html",
+        {"request": request, "error": setup_message, "setup_required": bool(setup_message)},
+    )
 
 
 @app.post("/login")
@@ -142,12 +177,32 @@ def login(
     username: str = Form(...),
     password: str = Form(...),
 ):
-    if not check_login(username.strip(), password):
+    setup_message = auth_setup_message()
+    if setup_message:
         return templates.TemplateResponse(
             "login.html",
-            {"request": request, "error": "Неверный логин или пароль"},
+            {"request": request, "error": setup_message, "setup_required": True},
+            status_code=503,
+        )
+    ip = client_ip(request)
+    if login_rate_limited(ip):
+        return templates.TemplateResponse(
+            "login.html",
+            {
+                "request": request,
+                "error": "Слишком много попыток входа. Подождите 15 минут.",
+                "setup_required": False,
+            },
+            status_code=429,
+        )
+    if not check_login(username.strip(), password):
+        record_login_failure(ip)
+        return templates.TemplateResponse(
+            "login.html",
+            {"request": request, "error": "Неверный логин или пароль", "setup_required": False},
             status_code=401,
         )
+    clear_login_failures(ip)
     response = RedirectResponse("/", status_code=303)
     is_secure = (
         request.url.scheme == "https"
@@ -197,9 +252,19 @@ def form_payload(
         normalized_port = 22
     if normalized_port < 1 or normalized_port > 65535:
         normalized_port = 22
+    if billing_period_days < 1:
+        billing_period_days = 30
     normalized_currency = currency.strip().upper() or "RUB"
     if normalized_currency not in SUPPORTED_CURRENCIES:
         normalized_currency = "RUB"
+    ssl_value = ssl_host.strip()
+    if ssl_value:
+        from app.url_safety import assert_public_host
+
+        try:
+            ssl_value = assert_public_host(ssl_value, context="SSL-хост")
+        except ConnectorError as error:
+            raise HTTPException(status_code=400, detail=str(error)) from error
     return {
         "hosting_account_id": hosting_account_id or None,
         "name": name.strip(),
@@ -209,14 +274,14 @@ def form_payload(
         "server_login": server_login.strip(),
         "server_password": server_password.strip(),
         "ssh_port": normalized_port,
-        "ssl_host": ssl_host.strip(),
+        "ssl_host": ssl_value,
         "service_id": service_id.strip(),
-        "amount": amount,
+        "amount": max(amount, 0),
         "currency": normalized_currency,
         "billing_period_days": billing_period_days,
         "next_payment_date": parse_payment_date(next_payment_date),
-        "payment_url": payment_url.strip(),
-        "panel_url": panel_url.strip(),
+        "payment_url": validate_http_url(payment_url, field="Ссылка на оплату"),
+        "panel_url": validate_http_url(panel_url, field="Ссылка на панель"),
         "notes": notes.strip(),
         "sync_locked": bool(sync_locked),
     }
@@ -261,9 +326,9 @@ def account_payload(
             nvme=onedash_nvme,
             processor=onedash_processor,
         )
-    panel = panel_url.strip()
-    payment = payment_url.strip()
-    api_url = integration_url.strip()
+    panel = validate_http_url(panel_url, field="URL панели")
+    payment = validate_http_url(payment_url, field="URL оплаты")
+    api_url = validate_http_url(integration_url, field="URL API")
     if normalized_integration == "billmanager":
         billmgr = resolve_billmanager_url(api_url, panel, provider)
         if billmgr:
@@ -502,6 +567,9 @@ def add_payment(
 
 @app.post("/servers/{server_id}/payments/{payment_id}/delete")
 def remove_payment(server_id: int, payment_id: int) -> RedirectResponse:
+    payments = list_payment_history(server_id)
+    if not any(item.id == payment_id for item in payments):
+        raise HTTPException(status_code=404, detail="Платёж не найден для этого сервера.")
     delete_payment(payment_id)
     return RedirectResponse(f"/servers/{server_id}/pay", status_code=303)
 
@@ -1045,8 +1113,17 @@ def ssl_page() -> RedirectResponse:
 
 @app.post("/ssl/add")
 def add_ssl_monitor(host: str = Form(...), port: int = Form(443), label: str = Form("")) -> RedirectResponse:
-    if host.strip():
-        create_ssl_monitor(host, port, label)
+    from app.url_safety import assert_public_host
+
+    cleaned = host.strip()
+    if cleaned:
+        try:
+            assert_public_host(cleaned, context="SSL-монитор")
+        except Exception as error:
+            raise HTTPException(status_code=400, detail=str(error)) from error
+        if port < 1 or port > 65535:
+            raise HTTPException(status_code=400, detail="Порт SSL должен быть от 1 до 65535.")
+        create_ssl_monitor(cleaned, port, label)
     return RedirectResponse("/settings#ssl", status_code=303)
 
 

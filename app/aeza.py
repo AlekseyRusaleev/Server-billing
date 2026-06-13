@@ -13,6 +13,7 @@ import urllib.request
 from datetime import date, datetime, timezone
 
 from app.connectors import ConnectorError, RemoteService
+from app.url_safety import assert_host_suffix
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +54,7 @@ class AezaConnector:
             raise ConnectorError("Не указан API-ключ Aeza.")
 
     def _request(self, path: str, *, method: str = "GET") -> dict[str, object]:
+        assert_host_suffix(self.api_base, ("aeza.net",), context="Aeza API")
         url = f"{self.api_base}/{path.lstrip('/')}"
         headers = {
             "Authorization": f"Bearer {self.api_key}",
