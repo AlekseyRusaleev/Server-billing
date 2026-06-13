@@ -385,17 +385,24 @@ import base64, hashlib, os, secrets
 from pathlib import Path
 
 password = input("Пароль администратора: ").encode()
+unlock = input("Пароль разблокировки ключей (мин. 12 символов): ")
+if len(unlock) < 12:
+    raise SystemExit("Пароль разблокировки слишком короткий")
 salt = os.urandom(16)
 digest = hashlib.pbkdf2_hmac("sha256", password, salt, 260_000)
 session_key = secrets.token_urlsafe(48)
 encryption_key = base64.urlsafe_b64encode(os.urandom(32)).decode()
 Path("secrets").mkdir(mode=0o700, exist_ok=True)
 Path("secrets/session.key").write_text(session_key, encoding="utf-8")
-Path("secrets/encryption.key").write_text(encryption_key, encoding="utf-8")
+from app.key_wrap import wrap_encryption_key
+Path("secrets/encryption.key.wrap").write_bytes(wrap_encryption_key(encryption_key, unlock))
+Path("secrets/unlock.passphrase").write_text(unlock, encoding="utf-8")
 os.chmod("secrets/session.key", 0o600)
-os.chmod("secrets/encryption.key", 0o600)
+os.chmod("secrets/encryption.key.wrap", 0o600)
+os.chmod("secrets/unlock.passphrase", 0o600)
 print("APP_SECRET_KEY_FILE=secrets/session.key")
-print("APP_ENCRYPTION_KEY_FILE=secrets/encryption.key")
+print("APP_ENCRYPTION_KEY_WRAP_FILE=secrets/encryption.key.wrap")
+print("PANEL_KEY_PASSPHRASE_FILE=secrets/unlock.passphrase")
 print("APP_UPDATE_TOKEN=" + secrets.token_urlsafe(32))
 print(
     "ADMIN_PASSWORD_HASH=pbkdf2_sha256:260000:"
@@ -514,7 +521,8 @@ SERVER_IP=YOUR_SERVER_IP
 CADDY_SITE_ADDRESS=YOUR_SERVER_IP.sslip.io
 CADDY_EMAIL=
 APP_SECRET_KEY_FILE=/app/secrets/session.key
-APP_ENCRYPTION_KEY_FILE=/app/secrets/encryption.key
+APP_ENCRYPTION_KEY_WRAP_FILE=/app/secrets/encryption.key.wrap
+PANEL_KEY_PASSPHRASE_FILE=/app/secrets/unlock.passphrase
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD_HASH=
 TELEGRAM_BOT_TOKEN=
@@ -603,7 +611,9 @@ Caddy автоматически выпустит HTTPS-сертификат.
 
 **Вручную:** [шаг 6](#6-обновление-вручную). Перед обновлением сохраните `data/` и `secrets/` или отправьте backup из настроек.
 
-**С нуля:** `install.sh` создаёт `secrets/session.key` и `secrets/encryption.key` автоматически — как на prod после миграции.
+**С нуля:** `install.sh` создаёт `secrets/session.key`, `secrets/encryption.key.wrap` (ключ под паролем) и `secrets/unlock.passphrase` — см. [SECURITY.md](SECURITY.md).
+
+**Обновление с raw-ключом:** после `migrate-keys-to-files.sh` выполните `bash scripts/wrap-encryption-key.sh`.
 
 ## Данные
 
@@ -628,14 +638,17 @@ SQLite-база хранится в:
 | Что | Где хранится |
 |-----|----------------|
 | Ключ сессии (cookie) | `secrets/session.key` (рекомендуется) или `APP_SECRET_KEY` в `.env` |
-| Ключ шифрования секретов | `secrets/encryption.key` (рекомендуется) или `APP_ENCRYPTION_KEY` в `.env` |
+| Ключ шифрования секретов | `secrets/encryption.key.wrap` + пароль разблокировки (рекомендуется) |
+| Пароль разблокировки ключей | `secrets/unlock.passphrase` или `PANEL_KEY_PASSPHRASE` / Docker secret |
 | Пароль администратора | `ADMIN_PASSWORD_HASH` в `.env` или SQLite |
 
-**Рекомендуемая схема:** master-ключи в каталоге **`secrets/`** (права `700` на каталог, `600` на файлы), в `.env` только пути `APP_*_KEY_FILE`. Каталог **`data/`** с SQLite можно бэкапить отдельно — без ключей расшифровка невозможна. Контейнер монтирует `secrets/` read-only.
+**Рекомендуемая схема:** master-ключ шифрования **не хранится на диске открытым текстом** — только обёртка `encryption.key.wrap` (PBKDF2 600k + Fernet). Пароль разблокировки задаётся при установке (мин. 12 символов) и хранится отдельно от `.env`. Каталог **`data/`** с SQLite можно бэкапить отдельно — без `secrets/` и пароля расшифровка невозможна.
 
-Новые секреты провайдеров **не сохраняются**, пока нет ключа шифрования. Не меняйте `encryption.key` после начала работы — старые записи не расшифруются.
+Подробная модель угроз: **[SECURITY.md](SECURITY.md)**.
 
-**Миграция с ключами в `.env`:** `bash scripts/migrate-keys-to-files.sh /opt/server-billing`, затем `docker compose -f docker-compose.prod.yml up -d`.
+Новые секреты провайдеров **не сохраняются**, пока ключ не разблокирован. Не меняйте master-ключ после начала работы — старые записи не расшифруются.
+
+**Миграция с ключами в `.env`:** `bash scripts/migrate-keys-to-files.sh`, затем **обязательно** `bash scripts/wrap-encryption-key.sh`, `docker compose -f docker-compose.prod.yml up -d`.
 
 ### Аутентификация и сессии
 
@@ -657,7 +670,7 @@ SQLite-база хранится в:
 
 - SQLite в `./data/server_billing.db`; master-ключи — в **`secrets/`** (отдельно от `data/`).
 - Контейнер приложения — **uid 1000**; `sudo chown -R 1000:1000 data secrets`.
-- Пароли SSH, API-ключи, token бота в БД — **Fernet**, ключ из `secrets/encryption.key`.
+- Пароли SSH, API-ключи, token бота в БД — **Fernet**, master-ключ из `secrets/encryption.key.wrap` (после разблокировки).
 - На странице оплаты пароли и секреты **не выводятся в HTML** — только «задан» / «не задан»; полные значения — в правке сервера/аккаунта.
 
 ### Исходящие запросы (anti-SSRF)
@@ -670,7 +683,7 @@ SQLite-база хранится в:
 ### Резервное копирование
 
 - Ручной и автоматический backup отправляет **зашифрованный** `.db.enc`, не сырой SQLite.
-- При утечке token бота смените его; доступ к чату backup = доступ к `.db.enc` (расшифровка — `secrets/encryption.key` на сервере).
+- При утечке token бота смените его; доступ к чату backup = доступ к `.db.enc` (нужны `encryption.key.wrap` + пароль на сервере).
 
 ### Веб-терминал
 
@@ -689,8 +702,9 @@ SQLite-база хранится в:
 ### Чеклист prod
 
 ```
-□ secrets/session.key и secrets/encryption.key созданы (не в .env)
-□ APP_SECRET_KEY / APP_ENCRYPTION_KEY убраны из .env (или только *_FILE)
+□ secrets/session.key и secrets/encryption.key.wrap созданы (не сырой encryption.key)
+□ secrets/unlock.passphrase или PANEL_KEY_PASSPHRASE задан (пароль разблокировки сохранён вне сервера)
+□ APP_SECRET_KEY / APP_ENCRYPTION_KEY убраны из .env (или только *_FILE / *_WRAP_FILE)
 □ Панель только через HTTPS (reverse proxy), не docker-compose.yml с :8000 на 0.0.0.0
 □ PANEL_IP_ALLOWLIST настроен осознанно (при необходимости — 127.0.0.1 для туннеля)
 □ TRUSTED_PROXIES = только реальный reverse proxy

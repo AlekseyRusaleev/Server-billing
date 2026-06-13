@@ -134,17 +134,37 @@ def startup() -> None:
     if not auth_enabled():
         logger.critical("Панель заблокирована: не заданы ключ сессии и/или ADMIN_PASSWORD_HASH.")
     from app.crypto import encryption_configured
-    from app.secrets_store import encryption_key_source, session_secret_source
+    from app.secrets_store import (
+        encryption_key_is_legacy_raw_file,
+        encryption_key_needs_passphrase,
+        encryption_key_source,
+        session_secret_source,
+    )
 
-    if not encryption_configured():
-        logger.warning(
-            "Ключ шифрования не найден (secrets/encryption.key) — "
-            "пароли и API-ключи не будут сохраняться до настройки."
+    source = encryption_key_source()
+    if source in {"missing", "wrap-no-passphrase", "wrap-locked"}:
+        logger.critical(
+            "Ключ шифрования недоступен (%s). "
+            "Задайте PANEL_KEY_PASSPHRASE или secrets/unlock.passphrase.",
+            source,
         )
-    elif encryption_key_source() == "env":
+    elif not encryption_configured():
         logger.warning(
-            "APP_ENCRYPTION_KEY в .env — для prod лучше перенести ключ в secrets/encryption.key "
-            "(см. README → Безопасность)."
+            "Ключ шифрования не настроен - пароли и API-ключи не будут сохраняться."
+        )
+    elif encryption_key_is_legacy_raw_file():
+        logger.warning(
+            "secrets/encryption.key хранится открытым текстом - выполните: "
+            "bash scripts/wrap-encryption-key.sh"
+        )
+    elif encryption_key_needs_passphrase():
+        logger.critical(
+            "Найден secrets/encryption.key.wrap, но не задан пароль разблокировки."
+        )
+    elif source == "env":
+        logger.warning(
+            "APP_ENCRYPTION_KEY в .env - перенесите в secrets/ и оберните паролем "
+            "(install.sh / wrap-encryption-key.sh)."
         )
     if session_secret_source() == "env":
         logger.warning(

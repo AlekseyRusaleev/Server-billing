@@ -7,8 +7,9 @@ services:
     environment:
       DATABASE_PATH: /app/data/server_billing.db
       APP_SECRET_KEY_FILE: /app/secrets/session.key
-      APP_ENCRYPTION_KEY_FILE: /app/secrets/encryption.key
-      # Caddy в той же Docker-сети — нужен для корректного X-Forwarded-For / IP whitelist
+      APP_ENCRYPTION_KEY_WRAP_FILE: /app/secrets/encryption.key.wrap
+      PANEL_KEY_PASSPHRASE_FILE: ${PANEL_KEY_PASSPHRASE_FILE:-/app/secrets/unlock.passphrase}
+      # Legacy до wrap-encryption-key.sh: APP_ENCRYPTION_KEY_FILE=/app/secrets/encryption.key
       TRUSTED_PROXIES: ${TRUSTED_PROXIES:-172.16.0.0/12}
     volumes:
       - ./data:/app/data
@@ -23,7 +24,8 @@ services:
     environment:
       DATABASE_PATH: /app/data/server_billing.db
       APP_SECRET_KEY_FILE: /app/secrets/session.key
-      APP_ENCRYPTION_KEY_FILE: /app/secrets/encryption.key
+      APP_ENCRYPTION_KEY_WRAP_FILE: /app/secrets/encryption.key.wrap
+      PANEL_KEY_PASSPHRASE_FILE: ${PANEL_KEY_PASSPHRASE_FILE:-/app/secrets/unlock.passphrase}
     volumes:
       - ./data:/app/data
       - ./secrets:/app/secrets:ro

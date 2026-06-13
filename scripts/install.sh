@@ -83,12 +83,26 @@ install_docker() {
 write_secret_files() {
   local app_secret_key="$1"
   local app_encryption_key="$2"
+  local panel_key_passphrase="$3"
   mkdir -p "$INSTALL_DIR/secrets"
   chmod 700 "$INSTALL_DIR/secrets"
   umask 077
-  printf '%s' "$app_encryption_key" > "$INSTALL_DIR/secrets/encryption.key"
   printf '%s' "$app_secret_key" > "$INSTALL_DIR/secrets/session.key"
-  chmod 600 "$INSTALL_DIR/secrets/encryption.key" "$INSTALL_DIR/secrets/session.key"
+  chmod 600 "$INSTALL_DIR/secrets/session.key"
+  cd "$INSTALL_DIR"
+  python3 - <<PY
+from pathlib import Path
+from app.key_wrap import wrap_encryption_key
+
+dek = """$app_encryption_key""".strip()
+passphrase = """$panel_key_passphrase"""
+Path("secrets/encryption.key.wrap").write_bytes(wrap_encryption_key(dek, passphrase))
+PY
+  chmod 600 "$INSTALL_DIR/secrets/encryption.key.wrap"
+  umask 077
+  printf '%s' "$panel_key_passphrase" > "$INSTALL_DIR/secrets/unlock.passphrase"
+  chmod 600 "$INSTALL_DIR/secrets/unlock.passphrase"
+  rm -f "$INSTALL_DIR/secrets/encryption.key"
   chown -R 1000:1000 "$INSTALL_DIR/secrets" 2>/dev/null || true
 }
 
@@ -159,7 +173,8 @@ SERVER_IP=$server_ip
 CADDY_SITE_ADDRESS=$site_address
 CADDY_EMAIL=$email
 APP_SECRET_KEY_FILE=/app/secrets/session.key
-APP_ENCRYPTION_KEY_FILE=/app/secrets/encryption.key
+APP_ENCRYPTION_KEY_WRAP_FILE=/app/secrets/encryption.key.wrap
+PANEL_KEY_PASSPHRASE_FILE=/app/secrets/unlock.passphrase
 ADMIN_USERNAME=$admin_username
 ADMIN_PASSWORD_HASH=$admin_password_hash
 TELEGRAM_BOT_TOKEN=$bot_token
@@ -216,6 +231,19 @@ import base64, os
 print(base64.urlsafe_b64encode(os.urandom(32)).decode())
 PY
 )"
+  local panel_key_passphrase panel_key_passphrase_repeat
+  while true; do
+    panel_key_passphrase="$(prompt_secret 'Пароль разблокировки ключей шифрования (мин. 12 символов, сохраните отдельно)')"
+    panel_key_passphrase_repeat="$(prompt_secret 'Повторите пароль разблокировки')"
+    if [ "${#panel_key_passphrase}" -lt 12 ]; then
+      echo "Пароль слишком короткий." > "$TTY_PATH"
+      continue
+    fi
+    if [ "$panel_key_passphrase" = "$panel_key_passphrase_repeat" ]; then
+      break
+    fi
+    echo "Пароли не совпадают." > "$TTY_PATH"
+  done
 
   install_packages
   install_docker
@@ -227,7 +255,7 @@ PY
     git clone "$REPO_URL" "$INSTALL_DIR"
   fi
 
-  write_secret_files "$app_secret_key" "$app_encryption_key"
+  write_secret_files "$app_secret_key" "$app_encryption_key" "$panel_key_passphrase"
   write_env "$domain" "$email" "$admin_username" "$admin_password_hash" "$app_secret_key" "$app_encryption_key" "" ""
   write_initial_version
 
@@ -252,8 +280,8 @@ PY
   echo "Known host keys are stored in $INSTALL_DIR/data/ssh_known_hosts.json (TOFU)."
   echo
   echo "Update later from the web panel or with:"
-  echo "  cd $INSTALL_DIR && git pull && bash scripts/migrate-keys-to-files.sh $INSTALL_DIR && docker compose -f docker-compose.prod.yml up -d --build"
-  echo "Master keys: $INSTALL_DIR/secrets/ (not in .env)"
+  echo "  cd $INSTALL_DIR && git pull && bash scripts/migrate-keys-to-files.sh $INSTALL_DIR && bash scripts/wrap-encryption-key.sh $INSTALL_DIR && docker compose -f docker-compose.prod.yml up -d --build"
+  echo "Encryption: secrets/encryption.key.wrap (password-protected). Keep unlock passphrase safe."
 }
 
 main "$@"

@@ -28,8 +28,8 @@ def encrypt_secret(value: str) -> str:
     active_cipher = cipher()
     if active_cipher is None:
         raise EncryptionRequiredError(
-            "Задайте ключ шифрования (secrets/encryption.key или APP_ENCRYPTION_KEY_FILE) "
-            "перед сохранением паролей и API-ключей."
+            "Задайте ключ шифрования (secrets/encryption.key.wrap + пароль разблокировки "
+            "или legacy secrets/encryption.key) перед сохранением паролей и API-ключей."
         )
     token = active_cipher.encrypt(value.encode("utf-8")).decode("utf-8")
     return FERNET_PREFIX + token
@@ -39,7 +39,7 @@ def encrypt_bytes(value: bytes) -> bytes:
     active_cipher = cipher()
     if active_cipher is None:
         raise EncryptionRequiredError(
-            "Задайте ключ шифрования (secrets/encryption.key) для шифрования резервных копий."
+            "Задайте ключ шифрования (secrets/encryption.key.wrap + пароль) для резервных копий."
         )
     return active_cipher.encrypt(value)
 
