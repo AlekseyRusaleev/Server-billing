@@ -132,12 +132,23 @@ def startup() -> None:
     seed_demo_data()
     encrypt_existing_secrets()
     if not auth_enabled():
-        logger.critical("Панель заблокирована: не заданы APP_SECRET_KEY и/или ADMIN_PASSWORD_HASH.")
+        logger.critical("Панель заблокирована: не заданы ключ сессии и/или ADMIN_PASSWORD_HASH.")
     from app.crypto import encryption_configured
+    from app.secrets_store import encryption_key_source, session_secret_source
 
     if not encryption_configured():
         logger.warning(
-            "APP_ENCRYPTION_KEY не задан — пароли и API-ключи не будут сохраняться до настройки ключа."
+            "Ключ шифрования не найден (secrets/encryption.key) — "
+            "пароли и API-ключи не будут сохраняться до настройки."
+        )
+    elif encryption_key_source() == "env":
+        logger.warning(
+            "APP_ENCRYPTION_KEY в .env — для prod лучше перенести ключ в secrets/encryption.key "
+            "(см. README → Безопасность)."
+        )
+    if session_secret_source() == "env":
+        logger.warning(
+            "APP_SECRET_KEY в .env — для prod лучше перенести в secrets/session.key."
         )
 
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from cryptography.fernet import Fernet, InvalidToken
 
-from app.config import settings
+from app.secrets_store import encryption_key
 
 FERNET_PREFIX = "fernet:"
 
@@ -12,7 +12,7 @@ class EncryptionRequiredError(RuntimeError):
 
 
 def cipher() -> Fernet | None:
-    key = settings.app_encryption_key.strip()
+    key = encryption_key()
     if not key:
         return None
     return Fernet(key.encode("utf-8"))
@@ -28,7 +28,8 @@ def encrypt_secret(value: str) -> str:
     active_cipher = cipher()
     if active_cipher is None:
         raise EncryptionRequiredError(
-            "Задайте APP_ENCRYPTION_KEY в .env перед сохранением паролей и API-ключей."
+            "Задайте ключ шифрования (secrets/encryption.key или APP_ENCRYPTION_KEY_FILE) "
+            "перед сохранением паролей и API-ключей."
         )
     token = active_cipher.encrypt(value.encode("utf-8")).decode("utf-8")
     return FERNET_PREFIX + token
@@ -38,7 +39,7 @@ def encrypt_bytes(value: bytes) -> bytes:
     active_cipher = cipher()
     if active_cipher is None:
         raise EncryptionRequiredError(
-            "Задайте APP_ENCRYPTION_KEY в .env для шифрования резервных копий."
+            "Задайте ключ шифрования (secrets/encryption.key) для шифрования резервных копий."
         )
     return active_cipher.encrypt(value)
 

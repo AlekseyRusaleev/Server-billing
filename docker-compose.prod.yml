@@ -6,10 +6,13 @@ services:
       - .env
     environment:
       DATABASE_PATH: /app/data/server_billing.db
+      APP_SECRET_KEY_FILE: /app/secrets/session.key
+      APP_ENCRYPTION_KEY_FILE: /app/secrets/encryption.key
       # Caddy в той же Docker-сети — нужен для корректного X-Forwarded-For / IP whitelist
       TRUSTED_PROXIES: ${TRUSTED_PROXIES:-172.16.0.0/12}
     volumes:
       - ./data:/app/data
+      - ./secrets:/app/secrets:ro
 
   scheduler:
     build: .
@@ -19,8 +22,11 @@ services:
       - .env
     environment:
       DATABASE_PATH: /app/data/server_billing.db
+      APP_SECRET_KEY_FILE: /app/secrets/session.key
+      APP_ENCRYPTION_KEY_FILE: /app/secrets/encryption.key
     volumes:
       - ./data:/app/data
+      - ./secrets:/app/secrets:ro
     depends_on:
       - app
 

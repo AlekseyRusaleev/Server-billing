@@ -191,7 +191,7 @@ def send_backup() -> bool:
             temp_path,
             caption=(
                 f"Server Billing backup (Fernet): {date.today().isoformat()}. "
-                "Расшифровка: APP_ENCRYPTION_KEY из .env."
+                "Расшифровка: secrets/encryption.key на сервере панели."
             ),
         )
     finally:

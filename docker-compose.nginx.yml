@@ -10,8 +10,11 @@ services:
       - .env
     environment:
       DATABASE_PATH: /app/data/server_billing.db
+      APP_SECRET_KEY_FILE: /app/secrets/session.key
+      APP_ENCRYPTION_KEY_FILE: /app/secrets/encryption.key
     volumes:
       - ./data:/app/data
+      - ./secrets:/app/secrets:ro
     ports:
       - "127.0.0.1:8000:8000"
 
@@ -23,8 +26,11 @@ services:
       - .env
     environment:
       DATABASE_PATH: /app/data/server_billing.db
+      APP_SECRET_KEY_FILE: /app/secrets/session.key
+      APP_ENCRYPTION_KEY_FILE: /app/secrets/encryption.key
     volumes:
       - ./data:/app/data
+      - ./secrets:/app/secrets:ro
     depends_on:
       - app
 

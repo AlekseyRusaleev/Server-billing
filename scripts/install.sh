@@ -80,6 +80,18 @@ install_docker() {
   systemctl enable --now docker
 }
 
+write_secret_files() {
+  local app_secret_key="$1"
+  local app_encryption_key="$2"
+  mkdir -p "$INSTALL_DIR/secrets"
+  chmod 700 "$INSTALL_DIR/secrets"
+  umask 077
+  printf '%s' "$app_encryption_key" > "$INSTALL_DIR/secrets/encryption.key"
+  printf '%s' "$app_secret_key" > "$INSTALL_DIR/secrets/session.key"
+  chmod 600 "$INSTALL_DIR/secrets/encryption.key" "$INSTALL_DIR/secrets/session.key"
+  chown -R 1000:1000 "$INSTALL_DIR/secrets" 2>/dev/null || true
+}
+
 write_env() {
   local domain="$1"
   local email="$2"
@@ -146,8 +158,8 @@ BASE_URL=$base_url
 SERVER_IP=$server_ip
 CADDY_SITE_ADDRESS=$site_address
 CADDY_EMAIL=$email
-APP_SECRET_KEY=$app_secret_key
-APP_ENCRYPTION_KEY=$app_encryption_key
+APP_SECRET_KEY_FILE=/app/secrets/session.key
+APP_ENCRYPTION_KEY_FILE=/app/secrets/encryption.key
 ADMIN_USERNAME=$admin_username
 ADMIN_PASSWORD_HASH=$admin_password_hash
 TELEGRAM_BOT_TOKEN=$bot_token
@@ -215,6 +227,7 @@ PY
     git clone "$REPO_URL" "$INSTALL_DIR"
   fi
 
+  write_secret_files "$app_secret_key" "$app_encryption_key"
   write_env "$domain" "$email" "$admin_username" "$admin_password_hash" "$app_secret_key" "$app_encryption_key" "" ""
   write_initial_version
 

@@ -382,12 +382,20 @@ cp .env.example .env
 ```bash
 python3 - <<'PY'
 import base64, hashlib, os, secrets
+from pathlib import Path
 
 password = input("Пароль администратора: ").encode()
 salt = os.urandom(16)
 digest = hashlib.pbkdf2_hmac("sha256", password, salt, 260_000)
-print("APP_SECRET_KEY=" + secrets.token_urlsafe(48))
-print("APP_ENCRYPTION_KEY=" + base64.urlsafe_b64encode(os.urandom(32)).decode())
+session_key = secrets.token_urlsafe(48)
+encryption_key = base64.urlsafe_b64encode(os.urandom(32)).decode()
+Path("secrets").mkdir(mode=0o700, exist_ok=True)
+Path("secrets/session.key").write_text(session_key, encoding="utf-8")
+Path("secrets/encryption.key").write_text(encryption_key, encoding="utf-8")
+os.chmod("secrets/session.key", 0o600)
+os.chmod("secrets/encryption.key", 0o600)
+print("APP_SECRET_KEY_FILE=secrets/session.key")
+print("APP_ENCRYPTION_KEY_FILE=secrets/encryption.key")
 print("APP_UPDATE_TOKEN=" + secrets.token_urlsafe(32))
 print(
     "ADMIN_PASSWORD_HASH=pbkdf2_sha256:260000:"
@@ -499,8 +507,8 @@ BASE_URL=https://YOUR_SERVER_IP.sslip.io
 SERVER_IP=YOUR_SERVER_IP
 CADDY_SITE_ADDRESS=YOUR_SERVER_IP.sslip.io
 CADDY_EMAIL=
-APP_SECRET_KEY=
-APP_ENCRYPTION_KEY=
+APP_SECRET_KEY_FILE=/app/secrets/session.key
+APP_ENCRYPTION_KEY_FILE=/app/secrets/encryption.key
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD_HASH=
 TELEGRAM_BOT_TOKEN=
@@ -607,15 +615,19 @@ SQLite-база хранится в:
 
 ### Обязательные секреты
 
-Без этих переменных в `.env` панель **не пускает** (fail-closed):
+Без ключей и пароля администратора панель **не пускает** (fail-closed):
 
-| Переменная | Назначение |
-|------------|------------|
-| `APP_SECRET_KEY` | Подпись сессионных cookie |
-| `ADMIN_PASSWORD_HASH` | Пароль администратора (PBKDF2-SHA256) |
-| `APP_ENCRYPTION_KEY` | Шифрование паролей серверов, API-ключей и token бота уведомлений в БД |
+| Что | Где хранится |
+|-----|----------------|
+| Ключ сессии (cookie) | `secrets/session.key` (рекомендуется) или `APP_SECRET_KEY` в `.env` |
+| Ключ шифрования секретов | `secrets/encryption.key` (рекомендуется) или `APP_ENCRYPTION_KEY` в `.env` |
+| Пароль администратора | `ADMIN_PASSWORD_HASH` в `.env` или SQLite |
 
-Новые секреты **не сохраняются**, пока не задан `APP_ENCRYPTION_KEY`. Не меняйте этот ключ после начала работы — старые записи не расшифруются.
+**Рекомендуемая схема:** master-ключи в каталоге **`secrets/`** (права `700` на каталог, `600` на файлы), в `.env` только пути `APP_*_KEY_FILE`. Каталог **`data/`** с SQLite можно бэкапить отдельно — без ключей расшифровка невозможна. Контейнер монтирует `secrets/` read-only.
+
+Новые секреты провайдеров **не сохраняются**, пока нет ключа шифрования. Не меняйте `encryption.key` после начала работы — старые записи не расшифруются.
+
+**Миграция с ключами в `.env`:** `bash scripts/migrate-keys-to-files.sh /opt/server-billing`, затем `docker compose -f docker-compose.prod.yml up -d`.
 
 ### Аутентификация и сессии
 
@@ -635,8 +647,9 @@ SQLite-база хранится в:
 
 ### Хранение данных
 
-- SQLite в `./data/server_billing.db`; контейнер приложения работает от **непривилегированного пользователя** (`uid 1000`). Каталог `data/` на хосте: `sudo chown -R 1000:1000 data`.
-- Пароли SSH, API-ключи провайдеров, token бота — **шифрование в БД**.
+- SQLite в `./data/server_billing.db`; master-ключи — в **`secrets/`** (отдельно от `data/`).
+- Контейнер приложения — **uid 1000**; `sudo chown -R 1000:1000 data secrets`.
+- Пароли SSH, API-ключи, token бота в БД — **Fernet**, ключ из `secrets/encryption.key`.
 - На странице оплаты пароли и секреты **не выводятся в HTML** — только «задан» / «не задан»; полные значения — в правке сервера/аккаунта.
 
 ### Исходящие запросы (anti-SSRF)
@@ -649,7 +662,7 @@ SQLite-база хранится в:
 ### Резервное копирование
 
 - Ручной и автоматический backup отправляет **зашифрованный** `.db.enc`, не сырой SQLite.
-- При утечке token бота смените его; доступ к чату backup = доступ к зашифрованному файлу (ключ — `APP_ENCRYPTION_KEY` на сервере).
+- При утечке token бота смените его; доступ к чату backup = доступ к `.db.enc` (расшифровка — `secrets/encryption.key` на сервере).
 
 ### Веб-терминал
 
@@ -668,7 +681,8 @@ SQLite-база хранится в:
 ### Чеклист prod
 
 ```
-□ APP_SECRET_KEY, ADMIN_PASSWORD_HASH, APP_ENCRYPTION_KEY заданы
+□ secrets/session.key и secrets/encryption.key созданы (не в .env)
+□ APP_SECRET_KEY / APP_ENCRYPTION_KEY убраны из .env (или только *_FILE)
 □ Панель только через HTTPS (reverse proxy), не docker-compose.yml с :8000 на 0.0.0.0
 □ PANEL_IP_ALLOWLIST настроен осознанно (при необходимости — 127.0.0.1 для туннеля)
 □ TRUSTED_PROXIES = только реальный reverse proxy

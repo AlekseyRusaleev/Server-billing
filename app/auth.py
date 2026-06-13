@@ -57,7 +57,7 @@ def auth_enabled() -> bool:
 
 
 def session_secret() -> str:
-    return settings.app_secret_key.strip()
+    return session_secret_key()
 
 
 def sign_payload(payload: dict[str, object]) -> str:
@@ -144,12 +144,12 @@ def is_authenticated(request: Request) -> bool:
 def auth_setup_message() -> str:
     missing: list[str] = []
     if not session_secret():
-        missing.append("APP_SECRET_KEY")
+        missing.append("ключ сессии (secrets/session.key)")
     if not admin_password_hash().strip():
         missing.append("ADMIN_PASSWORD_HASH")
     if not missing:
         return ""
-    return f"Панель заблокирована: задайте {', '.join(missing)} в .env и перезапустите сервис."
+    return f"Панель заблокирована: задайте {', '.join(missing)} и перезапустите сервис."
 
 
 _LOGIN_WINDOW_SECONDS = 15 * 60

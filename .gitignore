@@ -3,6 +3,7 @@ __pycache__/
 .venv/
 .env
 data/
+secrets/
 .pytest_cache/
 uvicorn.*.log
 artifacts/
