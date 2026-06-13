@@ -22,6 +22,7 @@
   </div>
   <div class="market-catalog-actions">
     <form method="post" action="/providers/sync" id="market-catalog-sync-form">
+      {% include "_csrf_input.html" %}
       <button
         class="secondary market-catalog-sync-btn"
         type="submit"

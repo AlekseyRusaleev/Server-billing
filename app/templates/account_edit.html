@@ -16,6 +16,7 @@
     </div>
   </form>
   <form method="post" action="/accounts/{{ account.id }}/delete" onsubmit="return confirm('Удалить аккаунт? Серверы останутся, но будут отвязаны.')">
+    {% include "_csrf_input.html" %}
     <button class="danger" type="submit">Удалить</button>
   </form>
 </section>

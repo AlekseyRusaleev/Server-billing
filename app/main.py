@@ -15,6 +15,7 @@ from app.auth import (
     COOKIE_NAME,
     auth_enabled,
     auth_setup_message,
+    bump_session_version,
     check_login,
     clear_login_failures,
     create_session_token,
@@ -23,6 +24,7 @@ from app.auth import (
     login_rate_limited,
     record_login_failure,
 )
+from app.csrf import csrf_protect_middleware
 from app.ip_access import client_ip, is_address_allowed, is_ip_allowed, normalize_allowlist, panel_ip_allowlist_text
 from app.config import settings
 from app.db import init_db
@@ -137,6 +139,25 @@ def startup() -> None:
         logger.warning(
             "APP_ENCRYPTION_KEY не задан — пароли и API-ключи не будут сохраняться до настройки ключа."
         )
+
+
+@app.middleware("http")
+async def csrf_protect(request: Request, call_next):
+    return await csrf_protect_middleware(request, call_next)
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    if (
+        request.url.scheme == "https"
+        or request.headers.get("x-forwarded-proto", "").lower() == "https"
+    ):
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
 
 
 @app.middleware("http")
@@ -1094,6 +1115,7 @@ def save_ip_allowlist(request: Request, allowlist: str = Form("")) -> RedirectRe
 
 @app.post("/settings/password")
 def change_password(
+    request: Request,
     current_password: str = Form(...),
     new_password: str = Form(...),
     new_password_repeat: str = Form(...),
@@ -1103,7 +1125,21 @@ def change_password(
     if len(new_password) < 8 or new_password != new_password_repeat:
         return RedirectResponse("/settings?password=invalid-new", status_code=303)
     set_app_setting("admin_password_hash", hash_password(new_password))
-    return RedirectResponse("/settings?password=changed", status_code=303)
+    bump_session_version()
+    response = RedirectResponse("/settings?password=changed", status_code=303)
+    is_secure = (
+        request.url.scheme == "https"
+        or request.headers.get("x-forwarded-proto", "").lower() == "https"
+    )
+    response.set_cookie(
+        COOKIE_NAME,
+        create_session_token(settings.admin_username),
+        httponly=True,
+        secure=is_secure,
+        samesite="lax",
+        max_age=60 * 60 * 24 * 30,
+    )
+    return response
 
 
 @app.get("/ssl")

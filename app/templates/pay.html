@@ -44,6 +44,7 @@
       <a class="primary disabled" aria-disabled="true">Ссылка не указана</a>
       {% endif %}
       <form method="post" action="/servers/{{ server.id }}/paid">
+        {% include "_csrf_input.html" %}
         <input class="compact-input" name="note" placeholder="Комментарий к оплате">
         <button class="secondary" type="submit">Отметить оплачено</button>
       </form>
@@ -68,6 +69,7 @@
         <span>{{ history|length }}</span>
       </div>
       <form method="post" action="/servers/{{ server.id }}/payments" class="manual-payment-form">
+        {% include "_csrf_input.html" %}
         <p class="muted">Добавить прошлую оплату вручную (для статистики, без сдвига даты следующей оплаты).</p>
         <div class="manual-payment-grid">
           <input type="date" name="paid_at" required>
@@ -89,6 +91,7 @@
           <small>{{ item.previous_next_payment_date.strftime("%d.%m.%Y") }} → {{ item.next_payment_date.strftime("%d.%m.%Y") }}</small>
           {% if item.note %}<p>{{ item.note }}</p>{% endif %}
           <form method="post" action="/servers/{{ server.id }}/payments/{{ item.id }}/delete" onsubmit="return confirm('Удалить запись об оплате?')">
+            {% include "_csrf_input.html" %}
             <button class="link-button danger-text" type="submit" title="Удалить запись">Удалить</button>
           </form>
         </div>

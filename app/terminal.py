@@ -5,8 +5,7 @@
 - Пароль расшифровывается только на сервере и никогда не уходит в браузер.
 - WebSocket авторизуется вручную по сессионной cookie (HTTP-middleware
   на WebSocket-соединения не распространяется).
-- Проверка ключа хоста по схеме TOFU (trust on first use): при смене ключа
-  соединение разрывается с предупреждением о возможной MITM-атаке.
+- Проверка ключа хоста по схеме TOFU (trust on first use) до отправки пароля.
 - Неактивная сессия автоматически закрывается через IDLE_TIMEOUT_SECONDS.
 - Команды не логируются.
 """
@@ -16,7 +15,7 @@ import asyncio
 import json
 from pathlib import Path
 
-from fastapi import WebSocket, WebSocketDisconnect
+from fastapi import WebSocket, WebSocketDisconnect, WebSocketException
 
 from app.auth import COOKIE_NAME, auth_enabled, verify_session_token
 from app.config import settings
@@ -71,48 +70,56 @@ async def _notify(websocket: WebSocket, kind: str, message: str) -> None:
         pass
 
 
-async def terminal_websocket(websocket: WebSocket, server_id: int) -> None:
-    await websocket.accept()
+def _build_tofu_client(host_id: str, asyncssh):
+    class TofuSSHClient(asyncssh.SSHClient):
+        def __init__(self) -> None:
+            super().__init__()
+            self.new_fingerprint: str | None = None
 
+        def validate_host_public_key(self, _hostname, _addr, _port, key) -> bool:
+            fingerprint = key.get_fingerprint()
+            known = _load_known_hosts()
+            stored = known.get(host_id)
+            if stored is None:
+                _remember_host(host_id, fingerprint)
+                self.new_fingerprint = fingerprint
+                return True
+            return stored == fingerprint
+
+    return TofuSSHClient()
+
+
+async def terminal_websocket(websocket: WebSocket, server_id: int) -> None:
     if not _authenticated(websocket):
-        await _notify(websocket, "error", "Не авторизовано. Войдите в панель заново.")
-        await websocket.close(code=4401)
-        return
+        raise WebSocketException(code=4401, reason="Unauthorized")
 
     if not is_websocket_ip_allowed(websocket):
-        await _notify(websocket, "error", "Доступ с вашего IP-адреса запрещён.")
-        await websocket.close(code=4403)
-        return
+        raise WebSocketException(code=4403, reason="Forbidden")
 
     if not web_terminal_enabled():
-        await _notify(websocket, "error", "Веб-терминал выключен в настройках панели.")
-        await websocket.close(code=4403)
-        return
+        raise WebSocketException(code=4403, reason="Web terminal disabled")
 
     server = get_server(server_id)
     if server is None:
-        await _notify(websocket, "error", "Сервер не найден.")
-        await websocket.close(code=4404)
-        return
+        raise WebSocketException(code=4404, reason="Server not found")
 
     host = server.ip_address.strip()
     username = server.server_login.strip()
     password = server.server_password
     port = server.ssh_port or 22
     if not host or not username or not password:
-        await _notify(websocket, "error", "Нет IP, логина или пароля сервера — терминал недоступен.")
-        await websocket.close(code=4400)
-        return
+        raise WebSocketException(code=4400, reason="Missing SSH credentials")
 
     try:
         import asyncssh
     except ImportError:
-        await _notify(websocket, "error", "Модуль asyncssh не установлен на сервере панели.")
-        await websocket.close(code=4500)
-        return
+        raise WebSocketException(code=4500, reason="asyncssh not installed") from None
 
+    await websocket.accept()
     await _notify(websocket, "status", f"Подключение к {host}:{port}…")
 
+    host_id = f"{host}:{port}"
+    tofu_client = _build_tofu_client(host_id, asyncssh)
     try:
         conn = await asyncio.wait_for(
             asyncssh.connect(
@@ -120,6 +127,7 @@ async def terminal_websocket(websocket: WebSocket, server_id: int) -> None:
                 port=port,
                 username=username,
                 password=password,
+                client_factory=tofu_client,
                 known_hosts=None,
                 client_keys=None,
                 config=None,
@@ -135,24 +143,12 @@ async def terminal_websocket(websocket: WebSocket, server_id: int) -> None:
         await websocket.close()
         return
 
-    host_id = f"{host}:{port}"
-    host_key = conn.get_server_host_key()
-    fingerprint = host_key.get_fingerprint() if host_key else ""
-    known = _load_known_hosts()
-    stored = known.get(host_id)
-    if stored is None:
-        _remember_host(host_id, fingerprint)
-        await _notify(websocket, "status", f"Новый сервер, ключ запомнен (TOFU): {fingerprint}")
-    elif stored != fingerprint:
-        conn.close()
+    if tofu_client.new_fingerprint:
         await _notify(
             websocket,
-            "error",
-            "ВНИМАНИЕ: ключ хоста изменился — возможна MITM-атака. Подключение прервано. "
-            "Если вы переустанавливали сервер, удалите старый ключ из data/ssh_known_hosts.json.",
+            "status",
+            f"Новый сервер, ключ запомнен (TOFU): {tofu_client.new_fingerprint}",
         )
-        await websocket.close(code=4495)
-        return
 
     try:
         await _bridge(websocket, conn, asyncssh)

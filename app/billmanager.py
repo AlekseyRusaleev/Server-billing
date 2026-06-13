@@ -326,19 +326,18 @@ class BillmanagerConnector:
             "out": "xml",
         }
         last_error: ConnectorError | None = None
-        for method in ("POST", "GET"):
-            try:
-                root = self._parse_xml(self._fetch_raw(params, method))
-                auth = root.find("auth")
-                session = ""
-                if auth is not None:
-                    session = (auth.text or auth.get("id") or "").strip()
-                if not session:
-                    raise ConnectorError("BILLmanager: пустой ответ сессии API.")
-                self._session_id = session
-                return
-            except ConnectorError as error:
-                last_error = error
+        try:
+            root = self._parse_xml(self._fetch_raw(params, "POST"))
+            auth = root.find("auth")
+            session = ""
+            if auth is not None:
+                session = (auth.text or auth.get("id") or "").strip()
+            if not session:
+                raise ConnectorError("BILLmanager: пустой ответ сессии API.")
+            self._session_id = session
+            return
+        except ConnectorError as error:
+            last_error = error
         if last_error is not None:
             raise last_error
         raise ConnectorError("BILLmanager: не удалось авторизоваться через сессию.")
@@ -371,18 +370,21 @@ class BillmanagerConnector:
         }
         if extra:
             params.update(extra)
-        last_error: ConnectorError | None = None
-        for method in ("POST", "GET"):
-            try:
-                return self._parse_xml(self._fetch_raw(params, method))
-            except ConnectorError as error:
-                last_error = error
-        if last_error is None:
-            raise ConnectorError("BILLmanager: ошибка запроса.")
-        if not _session_retry and not self._session_id and self._should_use_session(last_error):
+        try:
+            return self._parse_xml(self._fetch_raw(params, "POST"))
+        except ConnectorError as error:
+            last_error = error
+        if (
+            last_error is not None
+            and not _session_retry
+            and self._should_use_session(error)
+        ):
+            self._session_id = None
             self._establish_session()
             return self._request(func, extra, _session_retry=True)
-        raise last_error
+        if last_error is not None:
+            raise last_error
+        raise ConnectorError(f"BILLmanager: запрос {func} не выполнен.")
 
     @staticmethod
     def _is_auth_error(error: ConnectorError) -> bool:

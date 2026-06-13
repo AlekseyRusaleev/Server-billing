@@ -25,6 +25,7 @@
     {% endif %}
   </div>
   <form method="post" action="/servers/{{ server.id }}/delete" onsubmit="return confirm('Удалить сервер?')">
+    {% include "_csrf_input.html" %}
     <button class="danger" type="submit">Удалить</button>
   </form>
 </section>

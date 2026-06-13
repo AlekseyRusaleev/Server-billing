@@ -7,7 +7,6 @@ import json
 import os
 import secrets
 import time
-import time
 
 from fastapi import Request
 
@@ -15,6 +14,7 @@ from app.config import settings
 from app.db import connect
 
 COOKIE_NAME = "sb_session"
+SESSION_VERSION_KEY = "session_version"
 SESSION_TTL_SECONDS = 60 * 60 * 24 * 30
 PBKDF2_ITERATIONS = 260_000
 
@@ -72,6 +72,33 @@ def sign_payload(payload: dict[str, object]) -> str:
     return f"{body}.{signature}"
 
 
+def current_session_version() -> int:
+    try:
+        with connect() as connection:
+            row = connection.execute(
+                "SELECT value FROM app_settings WHERE key = ?",
+                (SESSION_VERSION_KEY,),
+            ).fetchone()
+        if row and row["value"]:
+            return int(row["value"])
+    except Exception:
+        pass
+    return 0
+
+
+def bump_session_version() -> None:
+    version = current_session_version() + 1
+    with connect() as connection:
+        connection.execute(
+            """
+            INSERT INTO app_settings (key, value)
+            VALUES (?, ?)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value
+            """,
+            (SESSION_VERSION_KEY, str(version)),
+        )
+
+
 def verify_session_token(token: str) -> dict[str, object] | None:
     if not auth_enabled() or "." not in token:
         return None
@@ -89,6 +116,8 @@ def verify_session_token(token: str) -> dict[str, object] | None:
         return None
     if int(payload.get("exp", 0)) < int(time.time()):
         return None
+    if int(payload.get("ver", -1)) != current_session_version():
+        return None
     return payload
 
 
@@ -98,6 +127,7 @@ def create_session_token(username: str) -> str:
             "sub": username,
             "iat": int(time.time()),
             "exp": int(time.time()) + SESSION_TTL_SECONDS,
+            "ver": current_session_version(),
             "nonce": secrets.token_urlsafe(12),
         }
     )

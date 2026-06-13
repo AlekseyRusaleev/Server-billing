@@ -57,9 +57,11 @@
         {% endif %}
         {% if account.is_synced %}
         <form method="post" action="/accounts/{{ account.id }}/sync" class="inline-form">
+          {% include "_csrf_input.html" %}
           <button class="icon-link" type="submit">Синхронизировать</button>
         </form>
         <form method="post" action="/accounts/{{ account.id }}/test-connection" class="inline-form">
+          {% include "_csrf_input.html" %}
           <button class="icon-link ghost" type="submit">Проверить</button>
         </form>
         {% endif %}
@@ -74,6 +76,7 @@
 
 <dialog id="add-account" class="modal">
   <form method="post" action="/accounts">
+    {% include "_csrf_input.html" %}
     <div class="modal-head">
       <h2>Новый аккаунт</h2>
       <button type="button" class="plain" onclick="this.closest('dialog').close()">×</button>

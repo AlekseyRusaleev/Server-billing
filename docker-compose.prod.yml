@@ -6,6 +6,8 @@ services:
       - .env
     environment:
       DATABASE_PATH: /app/data/server_billing.db
+      # Caddy в той же Docker-сети — нужен для корректного X-Forwarded-For / IP whitelist
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-172.16.0.0/12}
     volumes:
       - ./data:/app/data
 

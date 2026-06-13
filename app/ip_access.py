@@ -18,7 +18,6 @@ LOCALHOST_NETWORKS = (
 DEFAULT_TRUSTED_PROXY_CIDRS = (
     "127.0.0.0/8",
     "::1/128",
-    "172.16.0.0/12",
 )
 
 

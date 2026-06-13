@@ -27,6 +27,7 @@
       <a href="/settings">Настройки</a>
       <a class="donate-link" href="{{ donation_url }}" target="_blank" rel="noreferrer">Поддержать</a>
       <form method="post" action="/logout">
+        {% include "_csrf_input.html" %}
         <button class="link-button" type="submit">Выйти</button>
       </form>
     </nav>

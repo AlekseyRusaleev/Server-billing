@@ -9,6 +9,7 @@
 <body class="login-body">
   <main class="login-shell">
     <form class="login-card" method="post" action="/login">
+      {% include "_csrf_input.html" %}
       <span class="brand-mark">SB</span>
       <h1>Server Billing</h1>
       <p>Войдите в панель управления оплатами.</p>

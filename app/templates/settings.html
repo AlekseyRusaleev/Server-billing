@@ -88,6 +88,7 @@
     <p class="muted">Ваш текущий IP: <strong>{{ client_ip }}</strong></p>
     {% endif %}
     <form method="post" action="/settings/ip-allowlist" class="stack-form">
+      {% include "_csrf_input.html" %}
       <label>
         Разрешённые адреса (по одному на строку)
         <textarea id="ip-allowlist" name="allowlist" rows="6" placeholder="203.0.113.10&#10;192.168.1.0/24">{{ panel_ip_allowlist }}</textarea>
@@ -99,7 +100,7 @@
         <button class="primary" type="submit">Сохранить белый список</button>
       </div>
     </form>
-    <p class="muted">За reverse proxy (Caddy, nginx) панель берёт IP из <code>X-Forwarded-For</code> / <code>X-Real-IP</code> только если запрос пришёл от доверенного прокси (localhost, Docker-сеть). Прямые запросы с подделанными заголовками игнорируются. Начальный список — <code>PANEL_IP_ALLOWLIST</code>, дополнительные прокси — <code>TRUSTED_PROXIES</code> в .env.</p>
+    <p class="muted">За reverse proxy (Caddy, nginx) панель берёт IP из <code>X-Forwarded-For</code> / <code>X-Real-IP</code> только если запрос пришёл от доверенного прокси (localhost). Прямые запросы с подделанными заголовками игнорируются. Начальный список — <code>PANEL_IP_ALLOWLIST</code>, дополнительные прокси — <code>TRUSTED_PROXIES</code> в .env.</p>
   </aside>
 </section>
 
@@ -115,6 +116,7 @@
         <h3>Добавить Telegram bot</h3>
         <p class="muted">Вставьте token от @BotFather. Он проверится через Telegram API и сохранится только на вашем сервере.</p>
         <form method="post" action="/settings/telegram/bot">
+          {% include "_csrf_input.html" %}
           <input name="telegram_bot_token" placeholder="{{ 'подключен ' ~ notification.telegram_bot_username if token_configured else '123456:ABC...' }}" autocomplete="off">
           <button class="secondary" type="submit">Проверить и сохранить</button>
         </form>
@@ -138,6 +140,7 @@
           <li>Вернитесь сюда и нажмите «Найти мой чат»</li>
         </ol>
         <form method="post" action="/settings/telegram/chat/detect" class="setup-inline-form">
+          {% include "_csrf_input.html" %}
           <button class="primary" type="submit" {% if not token_configured %}disabled{% endif %}>Найти мой чат</button>
         </form>
 
@@ -145,6 +148,7 @@
         <div class="telegram-chat-picker">
           <p class="muted">Найдено чатов: {{ detected_chats|length }}. Выберите, куда слать уведомления:</p>
           <form method="post" action="/settings/telegram/chat/select" class="telegram-chat-picker-form">
+            {% include "_csrf_input.html" %}
             {% for detected_chat in detected_chats %}
             <label class="telegram-chat-option">
               <input type="radio" name="chat_id" value="{{ detected_chat.id }}" {% if loop.first %}checked{% endif %}>
@@ -167,6 +171,7 @@
           <summary>Вставить chat id вручную</summary>
           <p class="muted">Нужно только если автопоиск не сработал. Chat ID можно узнать у @userinfobot или @getmyid_bot.</p>
           <form method="post" action="/settings/telegram/chat" class="setup-inline-form">
+            {% include "_csrf_input.html" %}
             <input name="telegram_chat_id" value="{{ notification.telegram_chat_id }}" placeholder="647793683">
             <button class="secondary" type="submit">Сохранить chat id</button>
           </form>
@@ -179,6 +184,7 @@
         <h3>Проверить уведомления</h3>
         <p class="muted">Отправьте тестовое сообщение и убедитесь, что бот пишет в нужный чат.</p>
         <form method="post" action="/settings/telegram/test">
+          {% include "_csrf_input.html" %}
           <button class="secondary" type="submit" {% if not token_configured or not chat_configured %}disabled{% endif %}>Отправить тест</button>
         </form>
         {% if notification.telegram_tested_at %}
@@ -195,6 +201,7 @@
   </div>
   <div class="settings-row-2">
     <form class="panel" method="post" action="/settings">
+      {% include "_csrf_input.html" %}
       <div class="panel-head">
         <h2>Расписание</h2>
         <span>уведомления</span>
@@ -242,12 +249,15 @@
       </div>
       <p class="muted">Backup и ручная проверка используют подключенный Telegram chat.</p>
       <form method="post" action="/settings/telegram/backup">
+        {% include "_csrf_input.html" %}
         <button class="secondary" type="submit">Отправить backup</button>
       </form>
       <form method="post" action="/settings/reminders/run">
+        {% include "_csrf_input.html" %}
         <button class="secondary" type="submit">Проверить уведомления сейчас</button>
       </form>
       <form method="post" action="/settings/currency/refresh">
+        {% include "_csrf_input.html" %}
         <button class="secondary" type="submit">Обновить курсы валют</button>
       </form>
       <p class="muted">Курсы обновлены: {{ currency.updated_at or "нет данных" }}</p>
@@ -301,6 +311,7 @@
       <p class="muted">{{ version.message }}</p>
       <p class="muted">Кнопка подтянет свежую версию из репозитория и пересоберет Docker Compose на сервере.</p>
       <form method="post" action="/settings/update">
+        {% include "_csrf_input.html" %}
         <button class="secondary" type="submit" {% if not update_enabled %}disabled{% endif %}>Обновить сервис</button>
       </form>
     </aside>
@@ -319,6 +330,7 @@
       </div>
       <p class="muted">{{ catalog_sync.message }}</p>
       <form method="post" action="/settings/catalog-sync">
+        {% include "_csrf_input.html" %}
         <button class="secondary" type="submit" {% if not catalog_sync_enabled %}disabled{% endif %}>Обновить каталог сейчас</button>
       </form>
     </aside>
@@ -333,6 +345,7 @@
         пароль не покидает сервер. Команды выполняются на выбранном сервере — включайте осознанно.
       </p>
       <form method="post" action="/settings/web-terminal">
+        {% include "_csrf_input.html" %}
         <input type="hidden" name="enabled" value="{{ '0' if web_terminal_enabled else '1' }}">
         <button class="{{ 'danger' if web_terminal_enabled else 'secondary' }}" type="submit">
           {{ "Выключить веб-терминал" if web_terminal_enabled else "Включить веб-терминал" }}
@@ -346,6 +359,7 @@
         <span>admin</span>
       </div>
       <form method="post" action="/settings/password" class="stack-form">
+        {% include "_csrf_input.html" %}
         <label>
           Текущий пароль
           <input type="password" name="current_password" autocomplete="current-password" required>
@@ -376,6 +390,7 @@
   {% endif %}
   <div class="settings-row-3">
     <form class="panel" method="post" action="/domain">
+      {% include "_csrf_input.html" %}
       <div class="panel-head">
         <h2>Свой домен</h2>
         <span>{{ server_ip }}</span>
@@ -467,6 +482,7 @@
             <td class="actions" data-label="">
               {% if item.source == "monitor" %}
               <form method="post" action="/ssl/{{ item.monitor_id }}/delete" onsubmit="return confirm('Убрать домен из мониторинга?')">
+                {% include "_csrf_input.html" %}
                 <button class="link-button danger-text" type="submit">Удалить</button>
               </form>
               {% endif %}
@@ -485,6 +501,7 @@
 
   <div class="settings-row-2">
     <form class="panel" method="post" action="/ssl/add">
+      {% include "_csrf_input.html" %}
       <div class="panel-head">
         <h2>Добавить домен</h2>
         <span>отдельный список</span>
@@ -509,6 +526,7 @@
     </form>
 
     <form class="panel" method="post" action="/ssl/threshold">
+      {% include "_csrf_input.html" %}
       <div class="panel-head">
         <h2>Порог уведомления</h2>
         <span>дней</span>
