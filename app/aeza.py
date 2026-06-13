@@ -16,7 +16,8 @@ from app.connectors import ConnectorError, RemoteService
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_API_BASE = "https://core.aeza.net/api"
+DEFAULT_API_BASE = "https://my.aeza.net/api"
+LEGACY_API_BASE = "https://core.aeza.net/api"
 CABINET_URL = "https://my.aeza.net/"
 
 PAYMENT_TERM_DAYS = {
@@ -46,13 +47,7 @@ STATUS_MAP = {
 class AezaConnector:
     def __init__(self, api_key: str, api_base: str = DEFAULT_API_BASE, timeout: int = 25) -> None:
         self.api_key = (api_key or "").strip()
-        base = (api_base or DEFAULT_API_BASE).strip().rstrip("/")
-        if base.endswith("/api"):
-            self.api_base = base
-        elif "aeza.net" in base:
-            self.api_base = f"{base.rstrip('/')}/api"
-        else:
-            self.api_base = base
+        self.api_base = _normalize_api_base(api_base)
         self.timeout = timeout
         if not self.api_key:
             raise ConnectorError("Не указан API-ключ Aeza.")
@@ -106,10 +101,10 @@ class AezaConnector:
         return body
 
     def test_connection(self) -> None:
-        self._request("desktop")
+        self._request("services?count=1")
 
     def list_services(self) -> list[RemoteService]:
-        payload = self._request("services")
+        payload = self._request("services?count=100")
         data = payload.get("data")
         if not isinstance(data, dict):
             return []
@@ -125,6 +120,20 @@ class AezaConnector:
             if service is not None:
                 services.append(service)
         return services
+
+
+def _normalize_api_base(api_base: str) -> str:
+    base = (api_base or DEFAULT_API_BASE).strip().rstrip("/")
+    lowered = base.lower()
+    if not base or "core.aeza.net" in lowered or base == LEGACY_API_BASE.rstrip("/"):
+        return DEFAULT_API_BASE
+    if lowered.endswith("/api/v2"):
+        return base
+    if lowered.endswith("/api"):
+        return base
+    if "aeza.net" in lowered:
+        return f"{base}/api"
+    return base
 
 
 def _service_from_payload(item: dict[str, object]) -> RemoteService | None:

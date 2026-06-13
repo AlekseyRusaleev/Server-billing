@@ -155,7 +155,7 @@
     "referral_url": "https://aeza.net/?ref=394256",
     "api_docs_url": "https://my.aeza.net/api/v2/docs#/",
     "integration_type": "aeza",
-    "integration_url": "https://core.aeza.net/api",
+    "integration_url": "https://my.aeza.net/api",
     "panel_url": "https://my.aeza.net/",
     "payment_url": "https://my.aeza.net/",
     "default_currency": "EUR",
