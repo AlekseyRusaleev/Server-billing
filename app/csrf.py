@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hmac
 import secrets
+import urllib.parse
 
 from fastapi import Request
 from starlette.responses import HTMLResponse, Response
@@ -46,6 +47,22 @@ def attach_csrf_cookie(response: Response, token: str, *, secure: bool) -> None:
     )
 
 
+async def _csrf_form_token(request: Request) -> str:
+    """Read csrf_token without request.form() — form() breaks FastAPI Form() params."""
+    content_type = request.headers.get("content-type", "")
+    if "application/x-www-form-urlencoded" in content_type:
+        body = await request.body()
+        params = urllib.parse.parse_qs(
+            body.decode("utf-8", errors="replace"),
+            keep_blank_values=True,
+        )
+        return (params.get(CSRF_FIELD) or [""])[0]
+    if "multipart/form-data" in content_type:
+        form = await request.form()
+        return str(form.get(CSRF_FIELD, ""))
+    return ""
+
+
 async def csrf_protect_middleware(request: Request, call_next):
     path = request.url.path
     if path.startswith("/static/"):
@@ -55,9 +72,8 @@ async def csrf_protect_middleware(request: Request, call_next):
     request.state.csrf_token = token
 
     if request.method == "POST" and _is_form_post(request):
-        form = await request.form()
+        form_token = await _csrf_form_token(request)
         cookie_token = request.cookies.get(CSRF_COOKIE, "")
-        form_token = form.get(CSRF_FIELD, "")
         if (
             not cookie_token
             or not form_token

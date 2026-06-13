@@ -193,7 +193,7 @@ def login_page(request: Request) -> HTMLResponse:
 
 
 @app.post("/login")
-def login(
+async def login(
     request: Request,
     username: str = Form(...),
     password: str = Form(...),
