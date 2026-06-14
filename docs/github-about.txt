@@ -1,0 +1,9 @@
+Suggested text for the GitHub repository "About" box (Settings → General → Description):
+
+EN:
+Self-hosted panel for VPS/hosting renewals, payment links, provider API sync, Telegram reminders. One-command Docker install.
+
+RU (optional second line in README only; GitHub About is one field):
+Self-hosted панель учёта VPS: сроки оплаты, ссылки на биллинг, sync провайдеров, Telegram.
+
+Website: leave empty or point to your demo/docs URL if you add one later.

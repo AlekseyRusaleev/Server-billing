@@ -3,6 +3,14 @@
 
 # Server Billing Manager
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
+[![Docker](https://img.shields.io/badge/docker--compose-blue.svg)](docker-compose.prod.yml)
+[![Security](https://img.shields.io/badge/security-SECURITY.md-green.svg)](SECURITY.md)
+[![English docs](https://img.shields.io/badge/docs-English-informational)](README.en.md)
+
+**English:** [README.en.md](README.en.md) · **Contributing:** [CONTRIBUTING.md](CONTRIBUTING.md) · **Changelog:** [CHANGELOG.md](CHANGELOG.md)
+
 Self-hosted dashboard for tracking server renewals, hosting accounts, payment deadlines, and provider links in one place.
 
 Self-hosted панель для учета серверов, сроков оплаты и быстрых переходов к оплате у хостинг-провайдера.
@@ -14,6 +22,27 @@ Self-hosted панель для учета серверов, сроков опл
 - If you want to avoid missed renewals without storing payment cards inside the app.
 
 Сервис не проводит платежи сам и не хранит банковские карты. Он напоминает о сроках, показывает нужный сервер, хранит ссылку на кабинет/оплату и помогает быстро перейти к провайдеру.
+
+## Быстрый старт
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/AlekseyRusaleev/Server-billing/main/scripts/install.sh | bash
+```
+
+Установщик спросит домен (или выдаст `https://IP.sslip.io`), логин/пароль администратора и **пароль разблокировки ключей шифрования** (мин. 12 символов — сохраните отдельно). Подробнее — [установка одной командой](#установка-одной-команды) и [SECURITY.md](SECURITY.md).
+
+## Интеграции
+
+| Тип | Назначение |
+|-----|------------|
+| **Ручной** | Ссылки, даты, доступы вводятся вручную |
+| **BILLmanager** | Sync услуг, IP, сумм и дат с BILLmanager-совместимым API (только чтение) |
+| **Web API** | REST провайдеров по API-ключу — шаблоны с badge **API sync** в каталоге |
+| **Telegram** | Напоминания, сводки autosync, зашифрованный backup `.db.enc` |
+| **iCal** | Экспорт календаря оплат в Google/Apple/Outlook |
+| **SSL monitor** | Уведомления об истечении сертификатов |
+
+Добавить провайдера в каталог: [CONTRIBUTING.md](CONTRIBUTING.md). Детали sync: [Интеграция с провайдерами](#интеграция-с-провайдерами).
 
 ## Возможности
 
@@ -723,5 +752,11 @@ SQLite-база хранится в:
 ```
 
 Для коммерческой multi-tenant версии потребуются отдельные пользователи, роли, аудит доступа и политика резервного копирования.
+
+## Лицензия и участие
+
+Проект распространяется под [MIT License](LICENSE). Pull request'ы приветствуются ([CONTRIBUTING.md](CONTRIBUTING.md)); ответы на issues — по возможности, без SLA.
+
+Материалы для публикации: [docs/habr-article.md](docs/habr-article.md), [docs/community-posts.md](docs/community-posts.md), [docs/awesome-selfhosted-pr.md](docs/awesome-selfhosted-pr.md).
 
 Если решите поблагодарить, то это можно сделать через тг бота @AlekseyRdonate_bot
